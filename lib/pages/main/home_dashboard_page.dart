@@ -1,0 +1,331 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../backend/app_state.dart';
+import '../../components/wallet_card_widget.dart';
+import '../../components/service_grid_widget.dart';
+import '../../components/promo_banner_widget.dart';
+import '../../flutter_flow/flutter_flow_theme.dart';
+import '../../flutter_flow/flutter_flow_util.dart';
+import '../wallet/add_money_page.dart';
+import '../settings/live_pricing_page.dart';
+
+class HomeDashboardPage extends StatefulWidget {
+  const HomeDashboardPage({super.key});
+
+  @override
+  State<HomeDashboardPage> createState() => _HomeDashboardPageState();
+}
+
+class _HomeDashboardPageState extends State<HomeDashboardPage> {
+  bool _isRefreshing = false;
+
+  Future<void> _refreshData() async {
+    setState(() => _isRefreshing = true);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    await Future.wait([
+      appState.refreshWallet(),
+      appState.refreshTransactions(),
+      appState.refreshDataPlans(),
+      appState.loadAnnouncements(),
+    ]);
+    if (mounted) {
+      setState(() => _isRefreshing = false);
+      showSuccessToast(context, 'Balances and catalog synchronized!');
+    }
+  }
+
+  void _openWhatsAppSupport() async {
+    const phone = '2348123456780';
+    final url = Uri.parse('https://wa.me/$phone?text=Hello%20MBKDATASUB%20Support,%20I%20need%20assistance.');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        showInfoToast(context, 'WhatsApp Support: +$phone');
+      }
+    } catch (_) {
+      showInfoToast(context, 'WhatsApp Support: +$phone');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FlutterFlowTheme.of(context);
+    final appState = Provider.of<FFAppState>(context);
+    final user = appState.user;
+    final userName = user != null ? user.fullName : 'Guest User';
+
+    return Scaffold(
+      backgroundColor: theme.primaryBackground,
+      body: RefreshIndicator(
+        color: theme.primaryAccent,
+        onRefresh: _refreshData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              // 1. Top Curved Royal Navy Header
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 52, 20, 80),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [theme.primary, theme.primaryAccent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // User Greeting & Actions Row
+                        Row(
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.2),
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                  child: const Icon(Icons.person, color: Colors.white, size: 28),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    decoration: BoxDecoration(
+                                      color: theme.success,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 2),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    userName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.titleLarge.override(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Welcome to MBKDATASUB',
+                                    style: theme.labelSmall.override(
+                                      color: const Color(0xFFE2E8F0),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // WhatsApp Support Shortcut Button
+                            InkWell(
+                              onTap: _openWhatsAppSupport,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF22C55E),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Refresh Button
+                            InkWell(
+                              onTap: _isRefreshing ? null : _refreshData,
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: _isRefreshing
+                                    ? const Padding(
+                                        padding: EdgeInsets.all(10),
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Scrolling Announcement Ticker
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.16),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.campaign_rounded, color: Colors.amberAccent, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  appState.announcements.first,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.bodySmall.override(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Floating Wallet Card (Overlaps header)
+                  const Positioned(
+                    bottom: -50,
+                    left: 20,
+                    right: 20,
+                    child: WalletCardWidget(),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 64),
+
+              // 2. Quick Action Bar (Add Money, Pricing)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AddMoneyPage()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: theme.primary,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x1A0A1C6A),
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Add Money',
+                                style: theme.titleSmall.override(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LivePricingPage()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.sell_outlined, color: theme.primaryAccent, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'View Pricing',
+                                style: theme.titleSmall.override(
+                                  color: theme.primaryText,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // 3. Dynamic Promo Carousel Banner
+              const PromoBannerWidget(),
+
+              const SizedBox(height: 24),
+
+              // 4. Quick Services Grid
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: ServiceGridWidget(),
+              ),
+
+              const SizedBox(height: 36),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
