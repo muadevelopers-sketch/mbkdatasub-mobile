@@ -5,7 +5,6 @@ import '../schema/struct/user_record.dart';
 import '../schema/struct/wallet_record.dart';
 import '../schema/struct/data_plan_record.dart';
 import '../schema/struct/transaction_record.dart';
-import '../schema/struct/service_config_record.dart';
 
 class ApiResult<T> {
   final bool success;
@@ -26,8 +25,9 @@ class MbkApi {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _tokenKey = 'mbk_auth_jwt_token';
   static const String _userKey = 'mbk_user_profile_cache';
+  static const String _bioIdKey = 'mbk_bio_identifier';
+  static const String _bioPassKey = 'mbk_bio_password';
 
-  // Token cache
   static String? _cachedToken;
 
   static Future<String?> getToken() async {
@@ -41,6 +41,20 @@ class MbkApi {
     await _storage.write(key: _tokenKey, value: token);
   }
 
+  static Future<void> saveBiometricCredentials(String identifier, String password) async {
+    await _storage.write(key: _bioIdKey, value: identifier);
+    await _storage.write(key: _bioPassKey, value: password);
+  }
+
+  static Future<Map<String, String>?> getBiometricCredentials() async {
+    final id = await _storage.read(key: _bioIdKey);
+    final pass = await _storage.read(key: _bioPassKey);
+    if (id != null && pass != null && id.isNotEmpty && pass.isNotEmpty) {
+      return {'identifier': id, 'password': pass};
+    }
+    return null;
+  }
+
   static Future<void> clearAuth() async {
     _cachedToken = null;
     await _storage.delete(key: _tokenKey);
@@ -51,11 +65,21 @@ class MbkApi {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // Strict anti-cache headers ensure all website changes reflect immediately
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     };
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
+  }
+
+  static Uri _buildUri(String path, [Map<String, String>? queryParams]) {
+    final params = Map<String, String>.from(queryParams ?? {});
+    params['_t'] = DateTime.now().millisecondsSinceEpoch.toString();
+    return Uri.parse('$baseUrl$path').replace(queryParameters: params);
   }
 
   // ================= 1. AUTHENTICATION =================
@@ -66,7 +90,7 @@ class MbkApi {
   }) async {
     try {
       final res = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        _buildUri('/auth/login'),
         headers: _headers(null),
         body: jsonEncode({
           'identifier': identifier.trim(),
@@ -78,6 +102,7 @@ class MbkApi {
       if (res.statusCode == 200 && body['success'] == true) {
         final token = body['token']?.toString() ?? '';
         await setToken(token);
+        await saveBiometricCredentials(identifier.trim(), password);
         return ApiResult(
           success: true,
           message: body['message'] ?? 'Login successful!',
@@ -93,7 +118,86 @@ class MbkApi {
     } catch (e) {
       return ApiResult(
         success: false,
-        message: 'Network error. Please check your internet connection and try again.',
+        message: 'Network error. Please check your internet connection.',
+        statusCode: 0,
+      );
+    }
+  }
+
+  static Future<ApiResult<Map<String, dynamic>>> requestRegistrationOtp({
+    required String email,
+    required String phone,
+  }) async {
+    try {
+      final res = await http.post(
+        _buildUri('/auth/request-otp'),
+        headers: _headers(null),
+        body: jsonEncode({
+          'email': email.trim().toLowerCase(),
+          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        }),
+      );
+
+      final body = jsonDecode(res.body);
+      return ApiResult(
+        success: res.statusCode == 200 && body['success'] == true,
+        message: body['message'] ?? 'Verification code sent to your email.',
+        data: body,
+        statusCode: res.statusCode,
+      );
+    } catch (e) {
+      return ApiResult(
+        success: false,
+        message: 'Failed to request OTP. Please verify your connection.',
+        statusCode: 0,
+      );
+    }
+  }
+
+  static Future<ApiResult<Map<String, dynamic>>> register({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String password,
+    required String otp,
+    String? referralCode,
+  }) async {
+    try {
+      final res = await http.post(
+        _buildUri('/auth/register'),
+        headers: _headers(null),
+        body: jsonEncode({
+          'fullName': fullName.trim(),
+          'email': email.trim().toLowerCase(),
+          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+          'password': password,
+          'otp': otp.trim(),
+          if (referralCode != null && referralCode.trim().isNotEmpty)
+            'referralCode': referralCode.trim(),
+        }),
+      );
+
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 201 && body['success'] == true) {
+        final token = body['token']?.toString() ?? '';
+        if (token.isNotEmpty) await setToken(token);
+        await saveBiometricCredentials(email.trim().toLowerCase(), password);
+        return ApiResult(
+          success: true,
+          message: body['message'] ?? 'Registration successful!',
+          data: body,
+          statusCode: res.statusCode,
+        );
+      }
+      return ApiResult(
+        success: false,
+        message: body['message'] ?? 'Registration failed.',
+        statusCode: res.statusCode,
+      );
+    } catch (e) {
+      return ApiResult(
+        success: false,
+        message: 'Network error. Please try again.',
         statusCode: 0,
       );
     }
@@ -105,7 +209,7 @@ class MbkApi {
   }) async {
     try {
       final res = await http.post(
-        Uri.parse('$baseUrl/auth/login-pin'),
+        _buildUri('/auth/login-pin'),
         headers: _headers(null),
         body: jsonEncode({
           'identifier': identifier.trim(),
@@ -126,286 +230,268 @@ class MbkApi {
       }
       return ApiResult(
         success: false,
-        message: body['message'] ?? 'Invalid PIN or account not found.',
+        message: body['message'] ?? 'Invalid PIN.',
         statusCode: res.statusCode,
       );
     } catch (e) {
       return ApiResult(
         success: false,
-        message: 'Network error. Please check your internet connection.',
+        message: 'Network error.',
         statusCode: 0,
       );
     }
   }
 
-  static Future<ApiResult<Map<String, dynamic>>> register({
-    required String fullName,
-    required String email,
-    required String phone,
-    required String password,
-    String? referralCode,
+  static Future<ApiResult<bool>> setTransactionPin({
+    required String pin,
   }) async {
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/auth/register'),
-        headers: _headers(null),
-        body: jsonEncode({
-          'fullName': fullName.trim(),
-          'email': email.trim().toLowerCase(),
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
-          'password': password,
-          if (referralCode != null && referralCode.trim().isNotEmpty)
-            'referralCode': referralCode.trim(),
-        }),
-      );
-
-      final body = jsonDecode(res.body);
-      if (res.statusCode == 201 && body['success'] == true) {
-        final token = body['token']?.toString() ?? '';
-        if (token.isNotEmpty) await setToken(token);
-        return ApiResult(
-          success: true,
-          message: body['message'] ?? 'Registration successful!',
-          data: body,
-          statusCode: res.statusCode,
-        );
-      }
-      return ApiResult(
-        success: false,
-        message: body['message'] ?? 'Registration failed.',
-        statusCode: res.statusCode,
-      );
-    } catch (e) {
-      return ApiResult(
-        success: false,
-        message: 'Network connection failed during registration.',
-        statusCode: 0,
-      );
-    }
-  }
-
-  static Future<ApiResult<UserRecord>> getMe() async {
-    final token = await getToken();
-    if (token == null) {
-      return ApiResult(success: false, message: 'Not authenticated.', statusCode: 401);
-    }
-    try {
-      final res = await http.get(
-        Uri.parse('$baseUrl/auth/me'),
-        headers: _headers(token),
-      );
-      final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['success'] == true && body['user'] != null) {
-        return ApiResult(
-          success: true,
-          message: 'Profile fetched.',
-          data: UserRecord.fromJson(body['user']),
-        );
-      }
-      return ApiResult(success: false, message: body['message'] ?? 'Failed to load profile.');
-    } catch (e) {
-      return ApiResult(success: false, message: 'Connection error loading user profile.');
-    }
-  }
-
-  static Future<ApiResult<bool>> setTransactionPin(String pin) async {
-    final token = await getToken();
-    try {
-      final res = await http.post(
-        Uri.parse('$baseUrl/auth/set-pin'),
+        _buildUri('/auth/set-pin'),
         headers: _headers(token),
         body: jsonEncode({'pin': pin.trim()}),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? (res.statusCode == 200 ? 'Security PIN saved!' : 'Failed to set PIN.'),
-        data: res.statusCode == 200 && body['success'] == true,
+        message: body['message'] ?? 'Transaction PIN updated.',
+        data: res.statusCode == 200,
+        statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Connection error setting transaction PIN.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
   static Future<ApiResult<bool>> changePassword({
-    required String currentPassword,
+    required String oldPassword,
     required String newPassword,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/auth/change-password'),
+        _buildUri('/auth/change-password'),
         headers: _headers(token),
         body: jsonEncode({
-          'currentPassword': currentPassword,
+          'oldPassword': oldPassword,
           'newPassword': newPassword,
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Password update status received.',
-        data: res.statusCode == 200 && body['success'] == true,
+        message: body['message'] ?? 'Password updated.',
+        data: res.statusCode == 200,
+        statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error updating password.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
-  // ================= 2. WALLET & TRANSACTIONS =================
+  // ================= 2. USER PROFILE & WALLET =================
 
-  static Future<ApiResult<WalletRecord>> getWallet() async {
-    final token = await getToken();
+  static Future<ApiResult<UserRecord>> getMe() async {
     try {
-      final res = await http.get(
-        Uri.parse('$baseUrl/wallet'),
-        headers: _headers(token),
-      );
+      final token = await getToken();
+      if (token == null) return ApiResult(success: false, message: 'Unauthenticated', statusCode: 401);
+
+      final res = await http.get(_buildUri('/auth/me'), headers: _headers(token));
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['wallet'] != null) {
+      if (res.statusCode == 200 && body['success'] == true) {
         return ApiResult(
           success: true,
-          message: 'Wallet balance fetched.',
-          data: WalletRecord.fromJson(body['wallet']),
+          message: 'Profile retrieved',
+          data: UserRecord.fromJson(body['data'] ?? body['user']),
+          statusCode: res.statusCode,
         );
       }
-      return ApiResult(success: false, message: body['message'] ?? 'Failed to load wallet.');
+      return ApiResult(success: false, message: body['message'] ?? 'Failed to get profile', statusCode: res.statusCode);
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error connecting to wallet.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
-  static Future<ApiResult<List<TransactionRecord>>> getTransactions() async {
-    final token = await getToken();
+  static Future<ApiResult<UserRecord>> fetchProfile() => getMe();
+
+  static Future<ApiResult<WalletRecord>> getWallet() async {
     try {
-      final res = await http.get(
-        Uri.parse('$baseUrl/wallet/transactions'),
-        headers: _headers(token),
-      );
+      final token = await getToken();
+      if (token == null) return ApiResult(success: false, message: 'Unauthenticated', statusCode: 401);
+
+      final res = await http.get(_buildUri('/wallet'), headers: _headers(token));
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['transactions'] is List) {
-        final list = (body['transactions'] as List)
-            .map((t) => TransactionRecord.fromJson(t))
-            .toList();
-        return ApiResult(success: true, message: 'Transactions loaded.', data: list);
+      if (res.statusCode == 200 && body['success'] == true) {
+        return ApiResult(
+          success: true,
+          message: 'Wallet retrieved',
+          data: WalletRecord.fromJson(body['data']),
+          statusCode: res.statusCode,
+        );
       }
-      return ApiResult(success: false, message: body['message'] ?? 'No transactions found.');
+      return ApiResult(success: false, message: body['message'] ?? 'Failed to get wallet', statusCode: res.statusCode);
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error loading transaction ledger.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
-  // ================= 3. DYNAMIC DATA PLANS (FRESH LOOKUP) =================
+  static Future<ApiResult<WalletRecord>> fetchWallet() => getWallet();
 
-  static Future<ApiResult<List<DataPlanRecord>>> getDataPlans() async {
-    final token = await getToken();
+  static Future<ApiResult<Map<String, dynamic>>> getManualBank() async {
     try {
-      // Query plans directly from server to guarantee 100% real-time pricing
-      final res = await http.get(
-        Uri.parse('$baseUrl/admin/plans'),
-        headers: _headers(token),
-      );
+      final res = await http.get(_buildUri('/admin/bank'), headers: _headers(null));
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['plans'] is List) {
-        final plans = (body['plans'] as List)
-            .map((p) => DataPlanRecord.fromJson(p))
-            .where((p) => p.isActive)
-            .toList();
-        return ApiResult(success: true, message: 'Plans fetched fresh from server.', data: plans);
+      if (res.statusCode == 200 && body['success'] == true) {
+        return ApiResult(success: true, message: 'Bank info loaded', data: body['data']);
       }
-      return ApiResult(success: false, message: body['message'] ?? 'Could not fetch data plans.');
-    } catch (e) {
-      return ApiResult(success: false, message: 'Network error fetching data plans.');
+      return ApiResult(
+        success: true,
+        message: 'Default bank',
+        data: {
+          'bankName': 'OPay / PalmPay',
+          'accountNumber': '9012345678',
+          'accountName': 'MBKDATASUB ENTERPRISE',
+        },
+      );
+    } catch (_) {
+      return ApiResult(
+        success: true,
+        message: 'Offline bank fallback',
+        data: {
+          'bankName': 'OPay / PalmPay',
+          'accountNumber': '9012345678',
+          'accountName': 'MBKDATASUB ENTERPRISE',
+        },
+      );
     }
   }
 
-  // ================= 4. SERVICE PURCHASE FLOWS =================
+  // ================= 3. SERVICES: AIRTIME & DATA =================
+
+  static Future<ApiResult<List<DataPlanRecord>>> getDataPlans({String? network}) async {
+    try {
+      final token = await getToken();
+      final q = network != null ? {'network': network.toUpperCase()} : null;
+      final res = await http.get(_buildUri('/services/data/plans', q), headers: _headers(token));
+
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200 && body['success'] == true) {
+        final List list = body['data'] ?? [];
+        final plans = list.map((p) => DataPlanRecord.fromJson(p)).toList();
+        return ApiResult(success: true, message: 'Plans loaded', data: plans, statusCode: res.statusCode);
+      }
+      return ApiResult(success: false, message: body['message'] ?? 'Failed to load plans', statusCode: res.statusCode);
+    } catch (e) {
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+    }
+  }
+
+  static Future<ApiResult<List<DataPlanRecord>>> fetchDataPlans({String? network}) => getDataPlans(network: network);
 
   static Future<ApiResult<Map<String, dynamic>>> buyAirtime({
     required String network,
-    required String phone,
     required double amount,
+    required String phone,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/airtime'),
+        _buildUri('/services/airtime/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'network': network.toUpperCase(),
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
           'amount': amount,
+          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Airtime purchase response received.',
+        message: body['message'] ?? 'Airtime purchase processed.',
         data: body,
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network timeout during airtime checkout.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
+  static Future<ApiResult<Map<String, dynamic>>> purchaseAirtime({
+    required String network,
+    required double amount,
+    required String phone,
+    required String pin,
+  }) => buyAirtime(network: network, amount: amount, phone: phone, pin: pin);
+
   static Future<ApiResult<Map<String, dynamic>>> buyData({
     required String network,
-    required String phone,
     required String planId,
+    required String phone,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/data'),
+        _buildUri('/services/data/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'network': network.toUpperCase(),
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
           'planId': planId,
+          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Data subscription completed.',
+        message: body['message'] ?? 'Data bundle processed.',
         data: body,
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network timeout during data bundle order.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
+
+  static Future<ApiResult<Map<String, dynamic>>> purchaseData({
+    required String network,
+    required String planId,
+    required String phone,
+    required String pin,
+  }) => buyData(network: network, planId: planId, phone: phone, pin: pin);
+
+  // ================= 4. CABLE TV =================
 
   static Future<ApiResult<String>> verifySmartcard({
     required String provider,
     required String smartcard,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/cable/verify-card'),
+        _buildUri('/services/cable/validate'),
         headers: _headers(token),
         body: jsonEncode({
           'provider': provider.toLowerCase(),
-          'smartcard': smartcard.trim(),
+          'smartcardNumber': smartcard.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['customerName'] != null) {
-        return ApiResult(
-          success: true,
-          message: 'Smartcard verified.',
-          data: body['customerName']?.toString(),
-        );
+      if (res.statusCode == 200 && body['success'] == true) {
+        final name = body['data']?['customerName']?.toString() ?? 'VERIFIED CUSTOMER';
+        return ApiResult(success: true, message: 'Verified', data: name);
       }
-      return ApiResult(success: false, message: body['message'] ?? 'Invalid IUC/Smartcard number.');
+      return ApiResult(success: false, message: body['message'] ?? 'Smartcard not found');
     } catch (e) {
-      return ApiResult(success: false, message: 'Unable to verify smartcard right now.');
+      return ApiResult(success: false, message: 'Verification network error.');
     }
   }
 
@@ -417,41 +503,42 @@ class MbkApi {
     required double price,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/cable'),
+        _buildUri('/services/cable/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'provider': provider.toLowerCase(),
-          'smartcard': smartcard.trim(),
-          'packageName': packageName,
           'packageId': packageId,
-          'price': price,
+          'smartcardNumber': smartcard.trim(),
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Cable renewal response.',
+        message: body['message'] ?? 'Cable TV renewal processed.',
         data: body,
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network timeout during cable subscription.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
+
+  // ================= 5. ELECTRICITY =================
 
   static Future<ApiResult<String>> verifyMeter({
     required String disco,
     required String meterNumber,
     required String meterType,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/electricity/verify-meter'),
+        _buildUri('/services/electricity/validate'),
         headers: _headers(token),
         body: jsonEncode({
           'disco': disco.toLowerCase(),
@@ -459,17 +546,15 @@ class MbkApi {
           'meterType': meterType.toLowerCase(),
         }),
       );
+
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['customerName'] != null) {
-        return ApiResult(
-          success: true,
-          message: 'Meter verified.',
-          data: body['customerName']?.toString(),
-        );
+      if (res.statusCode == 200 && body['success'] == true) {
+        final name = body['data']?['customerName']?.toString() ?? 'VERIFIED CUSTOMER';
+        return ApiResult(success: true, message: 'Verified', data: name);
       }
-      return ApiResult(success: false, message: body['message'] ?? 'Invalid meter number.');
+      return ApiResult(success: false, message: body['message'] ?? 'Meter verification failed');
     } catch (e) {
-      return ApiResult(success: false, message: 'Unable to verify meter at this time.');
+      return ApiResult(success: false, message: 'Verification network error.');
     }
   }
 
@@ -481,10 +566,10 @@ class MbkApi {
     required String phone,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/electricity'),
+        _buildUri('/services/electricity/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'disco': disco.toLowerCase(),
@@ -495,55 +580,61 @@ class MbkApi {
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Electricity payment processed.',
+        message: body['message'] ?? 'Electricity token generated.',
         data: body,
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error during electricity recharge.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
+
+  // ================= 6. EXAM PINS =================
 
   static Future<ApiResult<Map<String, dynamic>>> buyExamPin({
     required String examName,
     required int quantity,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/exampin'),
+        _buildUri('/services/exam/purchase'),
         headers: _headers(token),
         body: jsonEncode({
-          'examName': examName.toUpperCase(),
+          'examType': examName.toUpperCase(),
           'quantity': quantity,
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Exam PIN generation response.',
+        message: body['message'] ?? 'Exam PIN purchase processed.',
         data: body,
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error purchasing exam PINs.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
+
+  // ================= 7. GLO ALPHA & SMILE 4G =================
 
   static Future<ApiResult<Map<String, dynamic>>> buyAlphaTopup({
     required String phone,
     required double amount,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/alpha'),
+        _buildUri('/services/alpha/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
@@ -551,57 +642,61 @@ class MbkApi {
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Alpha Topup processed.',
+        message: body['message'] ?? 'Glo Alpha Topup processed.',
         data: body,
+        statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error during Alpha topup.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
   static Future<ApiResult<Map<String, dynamic>>> buySmile({
     required String accountId,
     required String type,
-    String? planName,
     required double amount,
     required String pin,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/smile'),
+        _buildUri('/services/smile/purchase'),
         headers: _headers(token),
         body: jsonEncode({
           'accountId': accountId.trim(),
           'type': type,
-          'planName': planName ?? 'Data Bundle',
           'amount': amount,
           'pin': pin.trim(),
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Smile recharge processed.',
+        message: body['message'] ?? 'Smile 4G topup processed.',
         data: body,
+        statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error during Smile transaction.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
+
+  // ================= 8. AIRTIME TO CASH =================
 
   static Future<ApiResult<Map<String, dynamic>>> submitAirtime2Cash({
     required String network,
     required String phone,
     required double amount,
   }) async {
-    final token = await getToken();
     try {
+      final token = await getToken();
       final res = await http.post(
-        Uri.parse('$baseUrl/services/airtime2cash'),
+        _buildUri('/services/airtime2cash/submit'),
         headers: _headers(token),
         body: jsonEncode({
           'network': network.toUpperCase(),
@@ -609,50 +704,51 @@ class MbkApi {
           'amount': amount,
         }),
       );
+
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
-        message: body['message'] ?? 'Airtime2Cash request submitted for review.',
+        message: body['message'] ?? 'A2C request logged.',
         data: body,
+        statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error submitting Airtime to Cash.');
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
     }
   }
 
-  // ================= 5. LIVE ANNOUNCEMENTS & BRANDING =================
+  // ================= 9. TRANSACTIONS & ANNOUNCEMENTS =================
 
-  static Future<List<String>> getAnnouncements() async {
+  static Future<ApiResult<List<TransactionRecord>>> getTransactions() async {
     try {
-      final res = await http.get(Uri.parse('$baseUrl/admin/announcements'));
+      final token = await getToken();
+      final res = await http.get(_buildUri('/wallet/transactions'), headers: _headers(token));
+
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['announcements'] is List) {
-        return (body['announcements'] as List)
-            .map((a) => (a['message'] ?? a['title'] ?? '').toString())
-            .where((s) => s.isNotEmpty)
-            .toList();
+      if (res.statusCode == 200 && body['success'] == true) {
+        final List list = body['data'] ?? [];
+        final txs = list.map((t) => TransactionRecord.fromJson(t)).toList();
+        return ApiResult(success: true, message: 'Transactions loaded', data: txs, statusCode: res.statusCode);
       }
-    } catch (_) {}
-    return ['Welcome to MBKDATASUB! Enjoy instant automated bill payments & data topups.'];
+      return ApiResult(success: false, message: body['message'] ?? 'Failed to load ledger', statusCode: res.statusCode);
+    } catch (e) {
+      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+    }
   }
 
-  static Future<Map<String, dynamic>> getManualBank() async {
-    final token = await getToken();
+  static Future<ApiResult<List<TransactionRecord>>> fetchTransactions() => getTransactions();
+
+  static Future<ApiResult<List<String>>> getAnnouncements() async {
     try {
-      final res = await http.get(
-        Uri.parse('$baseUrl/admin/bank'),
-        headers: _headers(token),
-      );
+      final res = await http.get(_buildUri('/admin/announcements'), headers: _headers(null));
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['bank'] != null) {
-        return body['bank'];
+      if (res.statusCode == 200 && body['success'] == true) {
+        final text = body['data']?['announcementText']?.toString() ?? '⚡ Welcome to MBKDATASUB - Instant Automated Topups!';
+        return ApiResult(success: true, message: 'Loaded', data: [text]);
       }
-    } catch (_) {}
-    return {
-      'bankName': 'Wema Bank',
-      'accountNumber': '9900000001',
-      'accountName': 'MBKDATASUB VENTURES',
-      'instruction': 'Transfer directly and contact WhatsApp support for instant confirmation.',
-    };
+      return ApiResult(success: true, message: 'Default', data: ['⚡ Welcome to MBKDATASUB - Fast & Automated Services.']);
+    } catch (_) {
+      return ApiResult(success: true, message: 'Offline', data: ['⚡ Welcome to MBKDATASUB - Fast & Automated Services.']);
+    }
   }
 }

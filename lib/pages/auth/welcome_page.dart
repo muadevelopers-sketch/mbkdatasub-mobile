@@ -11,210 +11,150 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: theme.primaryBackground,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEF4FF),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: theme.primaryAccent,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'MBKDATASUB',
-                      style: theme.labelMedium.override(
-                        color: theme.primaryAccent,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+      backgroundColor: const Color(0xFF07134B), // Deep navy matching banner
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 1. Full-Bleed Official Welcome Hero Banner
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/welcome_banner.jpg',
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+              errorBuilder: (_, __, ___) => Container(
+                color: const Color(0xFF0A1C6A),
+                alignment: Alignment.center,
+                child: Image.asset('assets/images/logo.png', width: 140),
               ),
-
-              const Spacer(flex: 1),
-
-              // Central Logo / 3D Graphics
-              Center(
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x1A1E5BF8),
-                        blurRadius: 30,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Image.asset(
-                    'assets/images/logo.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.cell_tower_rounded,
-                      size: 80,
-                      color: theme.primaryAccent,
-                    ),
-                  ),
-                ),
-              ),
-
-              const Spacer(flex: 1),
-
-              // Headline & Subtitle
-              Text(
-                'Simplify bill payments with ease!',
-                style: theme.displayMedium.override(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: theme.primary,
-                  lineHeight: 1.2,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Purchase data, airtime, and pay utility bills — all from the comfort of your home.',
-                style: theme.bodyLarge.override(
-                  color: theme.secondaryText,
-                  fontSize: 15,
-                  lineHeight: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Feature Badges
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _buildFeatureChip('⚡ Instant Top-up', theme),
-                  _buildFeatureChip('🔒 Secure Payments', theme),
-                  _buildFeatureChip('💡 Utility Bills', theme),
-                ],
-              ),
-
-              const Spacer(flex: 2),
-
-              // Continue as Guest Button
-              FFButtonWidget(
-                text: 'Continue as a Guest',
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MainNavShell()),
-                  );
-                },
-                options: FFButtonOptions(
-                  height: 52,
-                  color: Colors.white,
-                  textStyle: theme.titleMedium.override(
-                    color: theme.primaryText,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.5),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Sign In & Sign Up Row
-              Row(
-                children: [
-                  Expanded(
-                    child: FFButtonWidget(
-                      text: 'Sign In  →',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignInPage()),
-                        );
-                      },
-                      options: FFButtonOptions(
-                        height: 52,
-                        color: theme.primary,
-                        textStyle: theme.titleMedium.override(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: FFButtonWidget(
-                      text: 'Sign Up +👤',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignUpPage()),
-                        );
-                      },
-                      options: FFButtonOptions(
-                        height: 52,
-                        color: theme.primaryAccent,
-                        textStyle: theme.titleMedium.override(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
+            ),
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildFeatureChip(String label, FlutterFlowTheme theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x05000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+          // 2. High-Contrast Gradient Scrim Overlay at Bottom
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: size.height * 0.48,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    const Color(0xFF07134B).withOpacity(0.85),
+                    const Color(0xFF07134B),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Bottom Action Panel (Create Account & Sign In)
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 34,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Tagline
+                Text(
+                  'Fast, Reliable & Automated',
+                  textAlign: TextAlign.center,
+                  style: theme.labelMedium.override(
+                    color: const Color(0xFF93C5FD),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Your All-In-One VTU Portal',
+                  textAlign: TextAlign.center,
+                  style: theme.headlineSmall.override(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Button 1: Create Free Account (Primary)
+                FFButtonWidget(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignUpPage()),
+                    );
+                  },
+                  text: 'Create Free Account',
+                  options: FFButtonOptions(
+                    height: 54,
+                    color: theme.primaryAccent,
+                    textStyle: theme.titleSmall.override(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Button 2: Sign In (Secondary Outline)
+                FFButtonWidget(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SignInPage()),
+                    );
+                  },
+                  text: 'Sign In to Account',
+                  options: FFButtonOptions(
+                    height: 52,
+                    color: Colors.white.withOpacity(0.12),
+                    textStyle: theme.titleSmall.override(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    borderSide: BorderSide(
+                      color: Colors.white.withOpacity(0.35),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Guest Mode / Explore Services
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MainNavShell()),
+                    );
+                  },
+                  child: Text(
+                    'Explore Services as Guest →',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.75),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
-      ),
-      child: Text(
-        label,
-        style: theme.labelMedium.override(
-          color: theme.primaryText,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
       ),
     );
   }

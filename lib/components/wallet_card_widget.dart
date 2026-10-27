@@ -5,6 +5,7 @@ import '../backend/app_state.dart';
 import '../backend/schema/struct/wallet_record.dart';
 import '../flutter_flow/flutter_flow_theme.dart';
 import '../flutter_flow/flutter_flow_util.dart';
+import 'provider_logo_widget.dart';
 
 class WalletCardWidget extends StatelessWidget {
   const WalletCardWidget({super.key});
@@ -15,18 +16,19 @@ class WalletCardWidget extends StatelessWidget {
     final appState = Provider.of<FFAppState>(context);
     final wallet = appState.wallet;
     final isHidden = appState.isWalletHidden;
+    final accounts = wallet.displayAccounts;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: theme.secondaryBackground,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: const [
           BoxShadow(
             color: Color(0x14000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            blurRadius: 18,
+            offset: Offset(0, 6),
           ),
         ],
       ),
@@ -66,7 +68,7 @@ class WalletCardWidget extends StatelessWidget {
                     Text(
                       isHidden ? '••••••••' : formatNaira(wallet.balance),
                       style: theme.displaySmall.override(
-                        fontSize: 26,
+                        fontSize: 24,
                         fontWeight: FontWeight.w900,
                         color: theme.primaryText,
                       ),
@@ -82,7 +84,7 @@ class WalletCardWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '₦0',
+                          '₦0.00',
                           style: theme.labelSmall.override(
                             color: theme.success,
                             fontWeight: FontWeight.w700,
@@ -94,17 +96,12 @@ class WalletCardWidget extends StatelessWidget {
                 ),
               ),
 
-              // Right Section: Dedicated Automated Accounts
+              // Right Section: Dedicated PalmPay & Paga Accounts (Stacked)
               Expanded(
                 flex: 6,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (wallet.displayAccounts.isNotEmpty)
-                      ...wallet.displayAccounts.take(2).map((acc) => _buildAccountPill(acc, context, theme))
-                    else
-                      _buildPlaceholderPill('PalmPay Bank', wallet.virtualAccountNumber ?? 'Generating...', context, theme),
-                  ],
+                  children: accounts.map((acc) => _buildAccountPill(acc, context, theme)).toList(),
                 ),
               ),
             ],
@@ -115,17 +112,28 @@ class WalletCardWidget extends StatelessWidget {
   }
 
   Widget _buildAccountPill(DedicatedAccount acc, BuildContext context, FlutterFlowTheme theme) {
+    final isGenerating = acc.accountNumber == 'Generating...';
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: acc.type == 'palmpay' ? const Color(0xFFE0E7FF) : const Color(0xFFFFEDD5),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          ProviderLogoWidget(
+            providerName: acc.type,
+            size: 20,
+            borderRadius: 6,
+          ),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -134,7 +142,7 @@ class WalletCardWidget extends StatelessWidget {
                 style: theme.labelSmall.override(
                   fontSize: 10,
                   color: theme.secondaryText,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               Text(
@@ -142,54 +150,24 @@ class WalletCardWidget extends StatelessWidget {
                 style: theme.titleSmall.override(
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
-                  color: theme.primaryText,
+                  color: isGenerating ? theme.secondaryText : theme.primaryText,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: acc.accountNumber));
-              showSuccessToast(context, '${acc.bankName} account copied!');
-            },
-            child: Icon(
-              Icons.copy_rounded,
-              size: 16,
-              color: theme.primaryAccent,
+          const SizedBox(width: 6),
+          if (!isGenerating)
+            InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: acc.accountNumber));
+                showSuccessToast(context, '${acc.bankName} copied!');
+              },
+              child: Icon(
+                Icons.copy_rounded,
+                size: 14,
+                color: theme.primaryAccent,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderPill(String bank, String number, BuildContext context, FlutterFlowTheme theme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(bank, style: theme.labelSmall.override(fontSize: 10, color: theme.secondaryText)),
-              Text(number, style: theme.titleSmall.override(fontSize: 12, fontWeight: FontWeight.w800)),
-            ],
-          ),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: number));
-              showSuccessToast(context, 'Account copied!');
-            },
-            child: Icon(Icons.copy_rounded, size: 16, color: theme.primaryAccent),
-          ),
         ],
       ),
     );

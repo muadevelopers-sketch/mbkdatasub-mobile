@@ -81,34 +81,55 @@ class WalletRecord {
     );
   }
 
-  // Helper to retrieve display accounts with fallback
+  // GUARANTEED: Always returns BOTH PalmPay AND Paga Dedicated Accounts
   List<DedicatedAccount> get displayAccounts {
-    if (accounts.isNotEmpty) return accounts;
     final list = <DedicatedAccount>[];
-    if (palmpayAccountNumber != null && palmpayAccountNumber!.length >= 8) {
-      list.add(DedicatedAccount(
-        bankName: palmpayBankName ?? 'PalmPay',
-        accountNumber: palmpayAccountNumber!,
-        accountName: palmpayAccountName ?? 'MBK Dedicated Account',
-        type: 'palmpay',
-      ));
+
+    // 1. Dedicated PalmPay
+    String palmNum = '';
+    if (palmpayAccountNumber != null && palmpayAccountNumber!.trim().length >= 8) {
+      palmNum = palmpayAccountNumber!.trim();
+    } else {
+      for (final a in accounts) {
+        if ((a.type.toLowerCase().contains('palm') || a.bankName.toLowerCase().contains('palm')) &&
+            a.accountNumber.trim().length >= 8) {
+          palmNum = a.accountNumber.trim();
+          break;
+        }
+      }
     }
-    if (pagaAccountNumber != null && pagaAccountNumber!.length >= 8) {
-      list.add(DedicatedAccount(
-        bankName: pagaBankName ?? 'Paga',
-        accountNumber: pagaAccountNumber!,
-        accountName: pagaAccountName ?? 'MBK Dedicated Account',
-        type: 'paga',
-      ));
+    if (palmNum.isEmpty && virtualAccountNumber != null && virtualAccountNumber!.trim().length >= 8) {
+      palmNum = virtualAccountNumber!.trim();
     }
-    if (list.isEmpty && virtualAccountNumber != null && virtualAccountNumber!.isNotEmpty) {
-      list.add(DedicatedAccount(
-        bankName: virtualBankName ?? 'PalmPay',
-        accountNumber: virtualAccountNumber!,
-        accountName: virtualAccountName ?? 'MBK Account',
-        type: 'virtual',
-      ));
+
+    list.add(DedicatedAccount(
+      bankName: 'PalmPay Bank',
+      accountNumber: palmNum.isNotEmpty ? palmNum : 'Generating...',
+      accountName: palmpayAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
+      type: 'palmpay',
+    ));
+
+    // 2. Dedicated Paga
+    String pagaNum = '';
+    if (pagaAccountNumber != null && pagaAccountNumber!.trim().length >= 8) {
+      pagaNum = pagaAccountNumber!.trim();
+    } else {
+      for (final a in accounts) {
+        if ((a.type.toLowerCase().contains('paga') || a.bankName.toLowerCase().contains('paga')) &&
+            a.accountNumber.trim().length >= 8) {
+          pagaNum = a.accountNumber.trim();
+          break;
+        }
+      }
     }
+
+    list.add(DedicatedAccount(
+      bankName: 'Paga Bank',
+      accountNumber: pagaNum.isNotEmpty ? pagaNum : 'Generating...',
+      accountName: pagaAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
+      type: 'paga',
+    ));
+
     return list;
   }
 }

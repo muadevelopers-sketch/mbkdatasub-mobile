@@ -4,6 +4,7 @@ import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
@@ -178,7 +179,17 @@ class _ElectricityPageState extends State<ElectricityPage> {
                     items: _discos.map((d) {
                       return DropdownMenuItem<String>(
                         value: d['name'],
-                        child: Text(d['label']!, style: theme.titleSmall.override(fontWeight: FontWeight.w700)),
+                        child: Row(
+                          children: [
+                            ProviderLogoWidget(
+                              providerName: d['label']!,
+                              size: 26,
+                              borderRadius: 6,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(d['label']!, style: theme.titleSmall.override(fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../backend/api_requests/api_calls.dart';
@@ -23,22 +24,61 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _referralCodeController = TextEditingController();
+  final _otpController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreedToTerms = true;
   bool _isLoading = false;
+  bool _isVerifyingOtp = false;
 
-  void _handleSignUp() async {
+  int _resendCountdown = 60;
+  Timer? _countdownTimer;
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _fullNameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _referralCodeController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  void _startResendTimer() {
+    setState(() => _resendCountdown = 60);
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_resendCountdown > 0) {
+        setState(() => _resendCountdown--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  void _handleInitiateSignUp() async {
     final name = _fullNameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
     final pass = _passwordController.text;
     final confirmPass = _confirmPasswordController.text;
-    final ref = _referralCodeController.text.trim();
 
     if (name.isEmpty || email.isEmpty || phone.isEmpty || pass.isEmpty) {
       showErrorToast(context, 'Please fill in all required fields.');
+      return;
+    }
+
+    if (!email.contains('@') || !email.contains('.')) {
+      showErrorToast(context, 'Please enter a valid email address.');
+      return;
+    }
+
+    if (phone.length < 10) {
+      showErrorToast(context, 'Please enter a valid phone number.');
       return;
     }
 
@@ -53,34 +93,198 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     if (!_agreedToTerms) {
-      showErrorToast(context, 'Please agree to the Terms & Conditions.');
+      showErrorToast(context, 'Please accept the Terms & Conditions.');
       return;
     }
 
     setState(() => _isLoading = true);
-    final res = await MbkApi.register(
-      fullName: name,
-      email: email,
-      phone: phone,
-      password: pass,
-      referralCode: ref.isNotEmpty ? ref : null,
-    );
+    final res = await MbkApi.requestRegistrationOtp(email: email, phone: phone);
     setState(() => _isLoading = false);
 
-    if (res.success && res.data != null) {
-      showSuccessToast(context, 'Account created successfully!');
-      final appState = Provider.of<FFAppState>(context, listen: false);
-      if (res.data!['user'] != null) {
-        final user = UserRecord.fromJson(res.data!['user']);
-        appState.setUser(user);
-      }
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const PinSetupPage()),
-      );
+    if (res.success) {
+      showSuccessToast(context, '6-digit OTP dispatched to $email');
+      _startResendTimer();
+      _showOtpModal(email);
     } else {
       showErrorToast(context, res.message);
     }
+  }
+
+  void _showOtpModal(String email) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (modalContext, setModalState) {
+          final theme = FlutterFlowTheme.of(context);
+          return Container(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Verify Your Email',
+                  textAlign: TextAlign.center,
+                  style: theme.headlineSmall.override(
+                    fontWeight: FontWeight.w900,
+                    color: theme.primaryText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'We sent a 6-digit confirmation code to:\n$email',
+                  textAlign: TextAlign.center,
+                  style: theme.bodyMedium.override(
+                    color: theme.secondaryText,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // 6-digit OTP input field
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.primaryAccent, width: 1.5),
+                  ),
+                  child: TextField(
+                    controller: _otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 12,
+                      color: Color(0xFF0A1C6A),
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: '••••••',
+                      counterText: '',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Resend Countdown
+                Center(
+                  child: _resendCountdown > 0
+                      ? Text(
+                          'Resend code in ${_resendCountdown}s',
+                          style: TextStyle(
+                            color: theme.secondaryText,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        )
+                      : TextButton(
+                          onPressed: () async {
+                            final res = await MbkApi.requestRegistrationOtp(
+                              email: _emailController.text.trim(),
+                              phone: _phoneController.text.trim(),
+                            );
+                            if (res.success) {
+                              showSuccessToast(context, 'New OTP sent!');
+                              _startResendTimer();
+                              setModalState(() {});
+                            } else {
+                              showErrorToast(context, res.message);
+                            }
+                          },
+                          child: Text(
+                            'Resend Code Now',
+                            style: TextStyle(
+                              color: theme.primaryAccent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 18),
+
+                // Verify & Complete Registration Button
+                FFButtonWidget(
+                  onPressed: _isVerifyingOtp
+                      ? null
+                      : () async {
+                          final otp = _otpController.text.trim();
+                          if (otp.length != 6) {
+                            showErrorToast(context, 'Please enter the 6-digit OTP code.');
+                            return;
+                          }
+
+                          setModalState(() => _isVerifyingOtp = true);
+                          final res = await MbkApi.register(
+                            fullName: _fullNameController.text.trim(),
+                            email: _emailController.text.trim(),
+                            phone: _phoneController.text.trim(),
+                            password: _passwordController.text,
+                            otp: otp,
+                            referralCode: _referralCodeController.text.trim().isNotEmpty
+                                ? _referralCodeController.text.trim()
+                                : null,
+                          );
+                          setModalState(() => _isVerifyingOtp = false);
+
+                          if (res.success && res.data != null) {
+                            Navigator.pop(context); // close modal
+                            showSuccessToast(context, 'Account created successfully!');
+                            final appState = Provider.of<FFAppState>(context, listen: false);
+                            if (res.data!['user'] != null) {
+                              final user = UserRecord.fromJson(res.data!['user']);
+                              appState.setUser(user);
+                            }
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (_) => const PinSetupPage()),
+                            );
+                          } else {
+                            showErrorToast(context, res.message);
+                          }
+                        },
+                  text: _isVerifyingOtp ? 'Verifying...' : 'Verify & Create Account',
+                  options: FFButtonOptions(
+                    height: 52,
+                    color: theme.primaryAccent,
+                    textStyle: theme.titleSmall.override(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    elevation: 3,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -100,210 +304,144 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                shape: BoxShape.circle,
+                shape: BoxCircle,
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
             ),
           ),
         ),
-        title: Text(
-          'Create Account',
-          style: theme.titleLarge.override(fontWeight: FontWeight.w800, color: theme.primaryText),
-        ),
-        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Join MBKDATASUB Today',
+                'Create Account',
                 style: theme.headlineMedium.override(
-                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: theme.primaryText,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Create your account to get started',
-                style: theme.bodyMedium.override(color: theme.secondaryText),
+                'Join MBKDATASUB for automated VTU, data & bill payments.',
+                style: theme.bodyMedium.override(
+                  color: theme.secondaryText,
+                ),
               ),
               const SizedBox(height: 24),
 
               // Full Name
-              _buildInputContainer(
-                child: TextField(
-                  controller: _fullNameController,
-                  textCapitalization: TextCapitalization.words,
-                  style: theme.bodyLarge,
-                  decoration: _inputDecoration('Full Name', Icons.person_outline_rounded, theme),
-                ),
+              _buildInputLabel('Full Name', theme),
+              _buildInputField(
+                controller: _fullNameController,
+                hintText: 'Enter your full name',
+                prefixIcon: Icons.person_outline_rounded,
+                theme: theme,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // Email Address
-              _buildInputContainer(
-                child: TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: theme.bodyLarge,
-                  decoration: _inputDecoration('Email Address', Icons.mail_outline_rounded, theme),
-                ),
+              // Email
+              _buildInputLabel('Email Address', theme),
+              _buildInputField(
+                controller: _emailController,
+                hintText: 'name@example.com',
+                prefixIcon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                theme: theme,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // Mobile Number
-              _buildInputContainer(
-                child: TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  style: theme.bodyLarge,
-                  decoration: _inputDecoration('Mobile Number', Icons.phone_android_rounded, theme),
-                ),
+              // Phone Number
+              _buildInputLabel('Phone Number', theme),
+              _buildInputField(
+                controller: _phoneController,
+                hintText: 'e.g. 08012345678',
+                prefixIcon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                theme: theme,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Password
-              _buildInputContainer(
-                child: TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  style: theme.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: 'Create strong password',
-                    hintStyle: theme.labelLarge.override(color: const Color(0xFF94A3B8)),
-                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0A1C6A)),
-                    suffixIcon: InkWell(
-                      onTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                      child: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
+              _buildInputLabel('Password', theme),
+              _buildInputField(
+                controller: _passwordController,
+                hintText: 'Create a strong password (min 8 chars)',
+                prefixIcon: Icons.lock_outline_rounded,
+                obscureText: _obscurePassword,
+                theme: theme,
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, color: theme.secondaryText),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
               // Confirm Password
-              _buildInputContainer(
-                child: TextField(
-                  controller: _confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  style: theme.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: 'Confirm Password',
-                    hintStyle: theme.labelLarge.override(color: const Color(0xFF94A3B8)),
-                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0A1C6A)),
-                    suffixIcon: InkWell(
-                      onTap: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                      child: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
+              _buildInputLabel('Confirm Password', theme),
+              _buildInputField(
+                controller: _confirmPasswordController,
+                hintText: 'Re-enter your password',
+                prefixIcon: Icons.lock_outline_rounded,
+                obscureText: _obscureConfirmPassword,
+                theme: theme,
+                suffixIcon: IconButton(
+                  icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, color: theme.secondaryText),
+                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
-              // Agent / Referral Code (Optional)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              // Referral Code (Optional)
+              _buildInputLabel('Referral Code (Optional)', theme),
+              _buildInputField(
+                controller: _referralCodeController,
+                hintText: 'Enter referral code if you have one',
+                prefixIcon: Icons.card_giftcard_rounded,
+                theme: theme,
+              ),
+              const SizedBox(height: 18),
+
+              // Terms Agreement
+              Row(
                 children: [
-                  _buildInputContainer(
-                    child: TextField(
-                      controller: _referralCodeController,
-                      style: theme.bodyLarge,
-                      decoration: _inputDecoration('Agent / Referral Code', Icons.group_add_outlined, theme),
-                    ),
+                  Checkbox(
+                    value: _agreedToTerms,
+                    activeColor: theme.primaryAccent,
+                    onChanged: (v) => setState(() => _agreedToTerms = v ?? true),
                   ),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6.0),
+                  Expanded(
                     child: Text(
-                      'Optional',
-                      style: theme.labelSmall.override(color: const Color(0xFF94A3B8)),
+                      'I agree to the Terms of Service and Privacy Policy.',
+                      style: theme.bodySmall.override(color: theme.secondaryText),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-
-              // Terms & Conditions Checkbox
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value: _agreedToTerms,
-                      activeColor: theme.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                      onChanged: (val) => setState(() => _agreedToTerms = val ?? true),
-                    ),
-                    Expanded(
-                      child: RichText(
-                        text: TextSpan(
-                          style: theme.bodySmall.override(fontSize: 12, lineHeight: 1.4),
-                          children: [
-                            const TextSpan(text: 'By proceeding forward you consent to agree to our '),
-                            TextSpan(
-                              text: 'Terms & Conditions',
-                              style: theme.bodySmall.override(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: theme.primary,
-                              ),
-                            ),
-                            const TextSpan(text: ' and '),
-                            TextSpan(
-                              text: 'Privacy Policy',
-                              style: theme.bodySmall.override(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: theme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 24),
 
-              // Create Account Button
+              // Sign Up Button
               FFButtonWidget(
-                text: 'Create Account',
-                onPressed: _isLoading ? null : _handleSignUp,
-                showLoadingIndicator: _isLoading,
+                onPressed: _isLoading ? null : _handleInitiateSignUp,
+                text: _isLoading ? 'Sending Verification Code...' : 'Send OTP & Create Account',
                 options: FFButtonOptions(
-                  height: 54,
-                  color: theme.primary,
-                  textStyle: theme.titleMedium.override(
+                  height: 52,
+                  color: theme.primaryAccent,
+                  textStyle: theme.titleSmall.override(
                     color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
+                  elevation: 3,
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Footer: Already have an account? Sign In
+              // Switch to Sign In
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -320,15 +458,15 @@ class _SignUpPageState extends State<SignUpPage> {
                     },
                     child: Text(
                       'Sign In',
-                      style: theme.titleSmall.override(
-                        color: theme.primary,
+                      style: theme.bodyMedium.override(
+                        color: theme.primaryAccent,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -336,24 +474,48 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  Widget _buildInputContainer({required Widget child}) {
+  Widget _buildInputLabel(String label, FlutterFlowTheme theme) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Text(
+        label,
+        style: theme.labelMedium.override(
+          color: theme.primaryText,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    required IconData prefixIcon,
+    required FlutterFlowTheme theme,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: child,
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint, IconData icon, FlutterFlowTheme theme) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: theme.labelLarge.override(color: const Color(0xFF94A3B8)),
-      prefixIcon: Icon(icon, color: const Color(0xFF0A1C6A)),
-      border: InputBorder.none,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: TextField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: theme.bodyMedium.override(color: theme.primaryText),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: theme.labelMedium.override(color: const Color(0xFF94A3B8)),
+          prefixIcon: Icon(prefixIcon, color: theme.secondaryText, size: 20),
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 
@@ -150,9 +151,8 @@ class _AirtimePageState extends State<AirtimePage> {
                           borderRadius: BorderRadius.circular(16),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 180),
-                            width: 68,
-                            height: 68,
-                            padding: const EdgeInsets.all(8),
+                            width: 76,
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                             decoration: BoxDecoration(
                               color: isSelected ? const Color(0xFFEEF4FF) : const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(16),
@@ -161,15 +161,25 @@ class _AirtimePageState extends State<AirtimePage> {
                                 width: isSelected ? 2 : 1,
                               ),
                             ),
-                            child: Center(
-                              child: Text(
-                                net['label']!,
-                                textAlign: TextAlign.center,
-                                style: theme.titleSmall.override(
-                                  fontWeight: FontWeight.w800,
-                                  color: isSelected ? theme.primaryAccent : theme.primaryText,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ProviderLogoWidget(
+                                  providerName: net['name']!,
+                                  size: 38,
+                                  borderRadius: 10,
                                 ),
-                              ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  net['label']!,
+                                  textAlign: TextAlign.center,
+                                  style: theme.labelSmall.override(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    color: isSelected ? theme.primaryAccent : theme.primaryText,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );

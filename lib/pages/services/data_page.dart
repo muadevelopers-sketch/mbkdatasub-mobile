@@ -5,6 +5,7 @@ import '../../backend/app_state.dart';
 import '../../backend/schema/struct/data_plan_record.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 
@@ -152,8 +153,8 @@ class _DataPageState extends State<DataPage> {
                     borderRadius: BorderRadius.circular(16),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      width: 72,
-                      height: 64,
+                      width: 76,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
                       decoration: BoxDecoration(
                         color: isSelected ? const Color(0xFFEEF4FF) : Colors.white,
                         borderRadius: BorderRadius.circular(16),
@@ -162,14 +163,25 @@ class _DataPageState extends State<DataPage> {
                           width: isSelected ? 2 : 1,
                         ),
                       ),
-                      child: Center(
-                        child: Text(
-                          net['label']!,
-                          style: theme.titleSmall.override(
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? theme.primaryAccent : theme.primaryText,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ProviderLogoWidget(
+                            providerName: net['name']!,
+                            size: 38,
+                            borderRadius: 10,
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(
+                            net['label']!,
+                            textAlign: TextAlign.center,
+                            style: theme.labelSmall.override(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                              color: isSelected ? theme.primaryAccent : theme.primaryText,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );
