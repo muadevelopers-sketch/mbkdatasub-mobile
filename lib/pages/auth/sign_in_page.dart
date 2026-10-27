@@ -146,7 +146,7 @@ class _SignInPageState extends State<SignInPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                shape: BoxCircle,
+                shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
@@ -168,7 +168,7 @@ class _SignInPageState extends State<SignInPage> {
                 height: 90,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  shape: BoxCircle,
+                  shape: BoxShape.circle,
                   boxShadow: const [
                     BoxShadow(color: Color(0x140A1C6A), blurRadius: 20, offset: Offset(0, 6)),
                   ],

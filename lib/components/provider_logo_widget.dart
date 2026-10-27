@@ -87,7 +87,7 @@ class ProviderLogoWidget extends StatelessWidget {
               height: size * 0.72,
               decoration: const BoxDecoration(
                 color: Colors.white,
-                shape: BoxCircle,
+                shape: BoxShape.circle,
               ),
             ),
             Text(
@@ -124,7 +124,7 @@ class ProviderLogoWidget extends StatelessWidget {
               width: size * 0.72,
               height: size * 0.72,
               decoration: BoxDecoration(
-                shape: BoxCircle,
+                shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFF70C922), width: size * 0.05),
               ),
             ),
@@ -163,7 +163,7 @@ class ProviderLogoWidget extends StatelessWidget {
               height: size * 0.38,
               decoration: BoxDecoration(
                 color: const Color(0xFFA0D300), // 9mobile Lime
-                shape: BoxCircle,
+                shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: size * 0.03),
               ),
               alignment: Alignment.center,

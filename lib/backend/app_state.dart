@@ -98,9 +98,9 @@ class FFAppState extends ChangeNotifier {
   }
 
   Future<void> loadAnnouncements() async {
-    final list = await MbkApi.getAnnouncements();
-    if (list.isNotEmpty) {
-      _announcements = list;
+    final res = await MbkApi.getAnnouncements();
+    if (res.success && res.data != null && res.data!.isNotEmpty) {
+      _announcements = res.data!;
       notifyListeners();
     }
   }

@@ -156,7 +156,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 Text(
                   'We sent a 6-digit confirmation code to:\n$email',
                   textAlign: TextAlign.center,
-                  style: theme.bodyMedium.override(
+                  style: theme.bodyMedium.copyWith(
                     color: theme.secondaryText,
                     height: 1.4,
                   ),
@@ -304,7 +304,7 @@ class _SignUpPageState extends State<SignUpPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                shape: BoxCircle,
+                shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),

@@ -242,9 +242,7 @@ class MbkApi {
     }
   }
 
-  static Future<ApiResult<bool>> setTransactionPin({
-    required String pin,
-  }) async {
+  static Future<ApiResult<bool>> setTransactionPin(String pin) async {
     try {
       final token = await getToken();
       final res = await http.post(
@@ -266,16 +264,19 @@ class MbkApi {
   }
 
   static Future<ApiResult<bool>> changePassword({
-    required String oldPassword,
+    String? oldPassword,
+    String? currentPassword,
     required String newPassword,
   }) async {
+    final effectiveOld = (currentPassword ?? oldPassword ?? '').trim();
     try {
       final token = await getToken();
       final res = await http.post(
         _buildUri('/auth/change-password'),
         headers: _headers(token),
         body: jsonEncode({
-          'oldPassword': oldPassword,
+          'oldPassword': effectiveOld,
+          'currentPassword': effectiveOld,
           'newPassword': newPassword,
         }),
       );

@@ -29,7 +29,7 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     final bank = await MbkApi.getManualBank();
     if (mounted) {
       setState(() {
-        _manualBank = bank;
+        _manualBank = bank.data;
         _isLoadingBank = false;
       });
     }
