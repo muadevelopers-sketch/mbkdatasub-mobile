@@ -806,13 +806,6 @@ class MbkApi {
       return ApiResult(success: false, message: 'Request timed out or network error. Please retry.', statusCode: 0);
     }
   }
-        data: body,
-        statusCode: res.statusCode,
-      );
-    } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
-    }
-  }
 
   // ================= 8. AIRTIME TO CASH =================
 
