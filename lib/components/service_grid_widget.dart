@@ -7,6 +7,7 @@ import '../pages/services/electricity_page.dart';
 import '../pages/services/exam_pin_page.dart';
 import '../pages/services/airtime_to_cash_page.dart';
 import '../pages/services/alpha_smile_page.dart';
+import '../pages/services/get_your_app_page.dart';
 
 class ServiceItem {
   final String title;
@@ -87,6 +88,13 @@ class ServiceGridWidget extends StatelessWidget {
         bgColor: const Color(0xFFCCFBF1),
         iconColor: const Color(0xFF0D9488),
         targetPage: const AlphaSmilePage(initialTab: 0),
+      ),
+      ServiceItem(
+        title: 'Get App',
+        icon: Icons.rocket_launch_rounded,
+        bgColor: const Color(0xFFEEF2FF),
+        iconColor: const Color(0xFF4F46E5),
+        targetPage: const GetYourAppPage(),
       ),
     ];
 
