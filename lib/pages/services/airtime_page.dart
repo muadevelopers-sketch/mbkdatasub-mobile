@@ -5,6 +5,7 @@ import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 
@@ -62,6 +63,21 @@ class _AirtimePageState extends State<AirtimePage> {
     },
   ];
 
+  void _onPhoneChanged(String val) {
+    final clean = val.replaceAll(RegExp(r'[^0-9]'), '');
+    final detected = detectNetworkFromPhone(clean);
+    if (detected != null && detected != _selectedNetwork) {
+      setState(() {
+        _selectedNetwork = detected;
+      });
+    }
+
+    // Dismiss keypad immediately when 11 digits (or 13 for 234) is reached
+    if (clean.length == 11 || (clean.startsWith('234') && clean.length == 13)) {
+      FocusScope.of(context).unfocus();
+    }
+  }
+
   void _pastePhoneNumber() async {
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null && data!.text!.isNotEmpty) {
@@ -69,6 +85,7 @@ class _AirtimePageState extends State<AirtimePage> {
       setState(() {
         _phoneController.text = clean;
       });
+      _onPhoneChanged(clean);
     }
   }
 
@@ -79,6 +96,7 @@ class _AirtimePageState extends State<AirtimePage> {
       setState(() {
         _phoneController.text = myPhone;
       });
+      _onPhoneChanged(myPhone);
     } else {
       showInfoToast(context, 'No registered phone number found on profile.');
     }
@@ -336,7 +354,8 @@ class _AirtimePageState extends State<AirtimePage> {
                               },
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
-                                height: 72,
+                                height: 82,
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: isSel
                                       ? (isDark ? net['darkSelectedBg'] : net['selectedBg'])
@@ -346,32 +365,43 @@ class _AirtimePageState extends State<AirtimePage> {
                                     color: isSel
                                         ? color
                                         : (isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0)),
-                                    width: isSel ? 1.8 : 1,
+                                    width: isSel ? 2 : 1,
                                   ),
+                                  boxShadow: isSel
+                                      ? [
+                                          BoxShadow(
+                                            color: color.withOpacity(0.25),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: isSel
-                                          ? const Icon(Icons.check, size: 9, color: Colors.black)
-                                          : null,
+                                    ProviderLogoWidget(
+                                      providerName: net['id'],
+                                      size: 34,
+                                      borderRadius: 9,
                                     ),
                                     const SizedBox(height: 6),
-                                    Text(
-                                      net['label'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSel ? theme.primaryText : theme.secondaryText,
-                                      ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          net['label'],
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: isSel ? theme.primaryText : theme.secondaryText,
+                                          ),
+                                        ),
+                                        if (isSel) ...[
+                                          const SizedBox(width: 3),
+                                          Icon(Icons.check_circle_rounded, size: 12, color: color),
+                                        ],
+                                      ],
                                     ),
                                   ],
                                 ),
@@ -429,11 +459,16 @@ class _AirtimePageState extends State<AirtimePage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.phone_android_rounded, size: 20, color: theme.secondaryText),
+                          ProviderLogoWidget(
+                            providerName: _selectedNetwork,
+                            size: 26,
+                            borderRadius: 7,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: _phoneController,
+                              onChanged: _onPhoneChanged,
                               keyboardType: TextInputType.phone,
                               style: TextStyle(
                                 fontSize: 15,

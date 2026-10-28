@@ -4,6 +4,7 @@ import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
@@ -129,7 +130,7 @@ class _ExamPinPageState extends State<ExamPinPage> {
                         borderRadius: BorderRadius.circular(16),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: isSelected ? const Color(0xFFEEF4FF) : Colors.white,
@@ -139,12 +140,24 @@ class _ExamPinPageState extends State<ExamPinPage> {
                               width: isSelected ? 2 : 1,
                             ),
                           ),
-                          child: Text(
-                            exam,
-                            style: theme.titleSmall.override(
-                              fontWeight: FontWeight.w800,
-                              color: isSelected ? theme.primaryAccent : theme.primaryText,
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ProviderLogoWidget(
+                                providerName: exam,
+                                size: 34,
+                                borderRadius: 8,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                exam,
+                                style: theme.titleSmall.override(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  color: isSelected ? theme.primaryAccent : theme.primaryText,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

@@ -4,6 +4,7 @@ import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
@@ -270,11 +271,20 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
                   child: TextField(
                     controller: _alphaPhoneController,
                     keyboardType: TextInputType.phone,
+                    onChanged: (val) {
+                      final clean = val.replaceAll(RegExp(r'[^0-9]'), '');
+                      if (clean.length == 11 || (clean.startsWith('234') && clean.length == 13)) {
+                        FocusScope.of(context).unfocus();
+                      }
+                    },
                     style: theme.bodyLarge.override(fontWeight: FontWeight.w600),
                     decoration: InputDecoration(
                       hintText: 'Enter Glo phone number',
                       hintStyle: theme.labelMedium.override(color: const Color(0xFF94A3B8)),
-                      prefixIcon: const Icon(Icons.phone_android_rounded, color: Color(0xFF0A1C6A)),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: ProviderLogoWidget(providerName: 'GLO', size: 26, borderRadius: 6),
+                      ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
@@ -332,7 +342,10 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
                     decoration: InputDecoration(
                       hintText: 'Enter Smile Account number',
                       hintStyle: theme.labelMedium.override(color: const Color(0xFF94A3B8)),
-                      prefixIcon: const Icon(Icons.wifi_tethering_rounded, color: Color(0xFF0A1C6A)),
+                      prefixIcon: const Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: ProviderLogoWidget(providerName: 'SMILE', size: 26, borderRadius: 6),
+                      ),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),

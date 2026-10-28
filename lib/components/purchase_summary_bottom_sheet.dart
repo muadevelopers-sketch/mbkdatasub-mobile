@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import '../backend/app_state.dart';
 import '../flutter_flow/flutter_flow_theme.dart';
@@ -28,11 +29,46 @@ class PurchaseSummaryBottomSheet extends StatefulWidget {
 
 class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet> {
   bool _isProcessing = false;
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  Future<void> _handleBiometric() async {
+    if (_isProcessing) return;
+    try {
+      final canAuth = await _localAuth.canCheckBiometrics || await _localAuth.isDeviceSupported();
+      if (!canAuth) {
+        if (mounted) {
+          showErrorToast(context, 'Biometrics not supported on this device. Please enter your 4-digit PIN.');
+        }
+        return;
+      }
+      final didAuth = await _localAuth.authenticate(
+        localizedReason: 'Authorize payment of ${formatNaira(widget.amount)} for ${widget.provider}',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (didAuth && mounted) {
+        final appState = Provider.of<FFAppState>(context, listen: false);
+        final savedPin = await appState.getSavedTransactionPin();
+        _handlePin(savedPin ?? '');
+      }
+    } catch (e) {
+      if (mounted) {
+        showErrorToast(context, 'Biometric verification failed. Please enter your 4-digit PIN.');
+      }
+    }
+  }
 
   void _handlePin(String pin) async {
     if (_isProcessing) return;
+    if (pin.isNotEmpty && pin.length < 4) {
+      showErrorToast(context, 'Please enter your complete 4-digit security PIN.');
+      return;
+    }
     setState(() => _isProcessing = true);
     try {
+      if (pin.isNotEmpty) {
+        final appState = Provider.of<FFAppState>(context, listen: false);
+        await appState.saveTransactionPin(pin);
+      }
       await widget.onPinConfirmed(pin);
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -199,7 +235,7 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
               ] else ...[
                 // Biometric 1-Tap Button
                 InkWell(
-                  onTap: () => _handlePin(''),
+                  onTap: _handleBiometric,
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
                     width: double.infinity,
@@ -267,7 +303,8 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
                   )
                 else
                   CustomPinPadWidget(
-                    showBiometrics: false,
+                    showBiometrics: true,
+                    onBiometricAuthenticated: _handleBiometric,
                     onPinCompleted: _handlePin,
                   ),
               ],

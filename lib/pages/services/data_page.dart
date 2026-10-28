@@ -6,6 +6,7 @@ import '../../backend/app_state.dart';
 import '../../backend/schema/struct/data_plan_record.dart';
 import '../../components/purchase_summary_bottom_sheet.dart';
 import '../../components/transaction_status_modal.dart';
+import '../../components/provider_logo_widget.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 
@@ -71,6 +72,22 @@ class _DataPageState extends State<DataPage> {
     },
   ];
 
+  void _onPhoneChanged(String val) {
+    final clean = val.replaceAll(RegExp(r'[^0-9]'), '');
+    final detected = detectNetworkFromPhone(clean);
+    if (detected != null && detected != _selectedNetwork) {
+      setState(() {
+        _selectedNetwork = detected;
+        _selectedPlan = null;
+      });
+    }
+
+    // Dismiss keypad immediately when 11 digits (or 13 for 234) is reached
+    if (clean.length == 11 || (clean.startsWith('234') && clean.length == 13)) {
+      FocusScope.of(context).unfocus();
+    }
+  }
+
   void _pastePhoneNumber() async {
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null && data!.text!.isNotEmpty) {
@@ -78,6 +95,7 @@ class _DataPageState extends State<DataPage> {
       setState(() {
         _phoneController.text = clean;
       });
+      _onPhoneChanged(clean);
     }
   }
 
@@ -88,6 +106,7 @@ class _DataPageState extends State<DataPage> {
       setState(() {
         _phoneController.text = myPhone;
       });
+      _onPhoneChanged(myPhone);
     } else {
       showInfoToast(context, 'No registered phone number found on profile.');
     }
@@ -373,7 +392,8 @@ class _DataPageState extends State<DataPage> {
                               },
                               borderRadius: BorderRadius.circular(16),
                               child: Container(
-                                height: 72,
+                                height: 82,
+                                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                                 decoration: BoxDecoration(
                                   color: isSel
                                       ? (isDark ? net['darkSelectedBg'] : net['selectedBg'])
@@ -383,37 +403,43 @@ class _DataPageState extends State<DataPage> {
                                     color: isSel
                                         ? color
                                         : (isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0)),
-                                    width: isSel ? 1.8 : 1,
+                                    width: isSel ? 2 : 1,
                                   ),
+                                  boxShadow: isSel
+                                      ? [
+                                          BoxShadow(
+                                            color: color.withOpacity(0.25),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
+                                    ProviderLogoWidget(
+                                      providerName: net['id'],
+                                      size: 34,
+                                      borderRadius: 9,
+                                    ),
+                                    const SizedBox(height: 6),
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: color,
-                                            shape: BoxShape.circle,
+                                        Text(
+                                          net['label'],
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: isSel ? theme.primaryText : theme.secondaryText,
                                           ),
-                                          alignment: Alignment.center,
-                                          child: isSel
-                                              ? const Icon(Icons.check, size: 9, color: Colors.black)
-                                              : null,
                                         ),
+                                        if (isSel) ...[
+                                          const SizedBox(width: 3),
+                                          Icon(Icons.check_circle_rounded, size: 12, color: color),
+                                        ],
                                       ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      net['label'],
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: isSel ? theme.primaryText : theme.secondaryText,
-                                      ),
                                     ),
                                   ],
                                 ),
@@ -472,11 +498,16 @@ class _DataPageState extends State<DataPage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.phone_android_rounded, size: 20, color: theme.secondaryText),
+                          ProviderLogoWidget(
+                            providerName: _selectedNetwork,
+                            size: 26,
+                            borderRadius: 7,
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: _phoneController,
+                              onChanged: _onPhoneChanged,
                               keyboardType: TextInputType.phone,
                               style: TextStyle(
                                 fontSize: 15,
@@ -660,48 +691,55 @@ class _DataPageState extends State<DataPage> {
                                 ),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            plan.name,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w800,
-                                              color: theme.primaryText,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFE0F2FE),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              plan.type.toUpperCase(),
-                                              style: const TextStyle(
-                                                color: Color(0xFF0369A1),
-                                                fontSize: 9.5,
+                                  ProviderLogoWidget(
+                                    providerName: plan.network,
+                                    size: 34,
+                                    borderRadius: 9,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              plan.name,
+                                              style: TextStyle(
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.w800,
+                                                color: theme.primaryText,
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        '${plan.validity} • Automated Fast Topup',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: theme.secondaryText,
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0F2FE),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                plan.type.toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Color(0xFF0369A1),
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          '${plan.validity} • Automated Fast Topup',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: theme.secondaryText,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   Text(
                                     formatNaira(price),

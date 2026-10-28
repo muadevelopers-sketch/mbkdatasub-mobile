@@ -36,10 +36,11 @@ class _PinLockPageState extends State<PinLockPage> {
         options: const AuthenticationOptions(biometricOnly: true),
       );
       if (didAuth && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavShell()),
-        );
+        final appState = Provider.of<FFAppState>(context, listen: false);
+        appState.unlockApp();
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
       } else if (mounted) {
         setState(() {
           _errorMessage = 'Biometric authentication cancelled. Enter your 4-digit PIN below.';
@@ -64,10 +65,12 @@ class _PinLockPageState extends State<PinLockPage> {
     if (mounted) {
       setState(() => _isVerifying = false);
       if (res.success) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavShell()),
-        );
+        final appState = Provider.of<FFAppState>(context, listen: false);
+        await appState.saveTransactionPin(pin);
+        appState.unlockApp();
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
       } else {
         setState(() {
           _errorMessage = 'Incorrect PIN. Please try again.';

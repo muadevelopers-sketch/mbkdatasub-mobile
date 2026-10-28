@@ -56,6 +56,42 @@ class FFAppState extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
+  bool _isAppLocked = true; // Strict app-level security: lock on startup
+  bool get isAppLocked => _isAppLocked;
+
+  void lockApp() {
+    if (!_isAppLocked) {
+      _isAppLocked = true;
+      notifyListeners();
+    }
+  }
+
+  void unlockApp() {
+    if (_isAppLocked) {
+      _isAppLocked = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> saveTransactionPin(String pin) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('mbk_user_tx_pin', pin.trim());
+    } catch (_) {}
+  }
+
+  Future<String> getSavedTransactionPin() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('mbk_user_tx_pin') ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
@@ -94,6 +130,7 @@ class FFAppState extends ChangeNotifier {
     } catch (_) {
     } finally {
       _isLoading = false;
+      _isInitialized = true;
       notifyListeners();
     }
   }
