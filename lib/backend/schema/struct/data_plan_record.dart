@@ -22,18 +22,26 @@ class DataPlanRecord {
   });
 
   factory DataPlanRecord.fromJson(Map<String, dynamic> json) {
-    // Automatically infer validity from plan name if not provided (e.g. "1GB (30 days)")
-    String inferredValidity = json['validity']?.toString() ?? '';
+    // Automatically use server-provided validity or infer from plan name (e.g. "1GB (30 days)")
+    String inferredValidity = (json['validity']?.toString() ?? '').trim();
     final nameLower = (json['name']?.toString() ?? '').toLowerCase();
     if (inferredValidity.isEmpty) {
-      if (nameLower.contains('1 day') || nameLower.contains('24 hrs') || nameLower.contains('daily')) {
+      if (nameLower.contains('1 day') || nameLower.contains('24 hrs') || nameLower.contains('24hr') || nameLower.contains('daily')) {
         inferredValidity = '1 Day';
-      } else if (nameLower.contains('2 days')) {
+      } else if (nameLower.contains('2 days') || nameLower.contains('2 day') || nameLower.contains('48 hrs')) {
         inferredValidity = '2 Days';
-      } else if (nameLower.contains('7 days') || nameLower.contains('weekly')) {
+      } else if (nameLower.contains('3 days') || nameLower.contains('3 day')) {
+        inferredValidity = '3 Days';
+      } else if (nameLower.contains('7 days') || nameLower.contains('weekly') || nameLower.contains('1 week')) {
         inferredValidity = '7 Days';
-      } else if (nameLower.contains('14 days')) {
+      } else if (nameLower.contains('14 days') || nameLower.contains('2 weeks')) {
         inferredValidity = '14 Days';
+      } else if (nameLower.contains('60 days')) {
+        inferredValidity = '60 Days';
+      } else if (nameLower.contains('90 days') || nameLower.contains('quarterly')) {
+        inferredValidity = '90 Days';
+      } else if (nameLower.contains('365 days') || nameLower.contains('yearly') || nameLower.contains('annual')) {
+        inferredValidity = '365 Days';
       } else {
         inferredValidity = '30 Days';
       }

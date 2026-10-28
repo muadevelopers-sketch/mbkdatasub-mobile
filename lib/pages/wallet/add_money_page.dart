@@ -18,6 +18,7 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
   Map<String, dynamic>? _manualBank;
   bool _isLoadingBank = false;
   bool _isAssigning = false;
+  bool _isRefreshingBalance = false;
 
   @override
   void initState() {
@@ -27,10 +28,12 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
 
   void _loadManualBank() async {
     setState(() => _isLoadingBank = true);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    await appState.refreshWallet();
     final bank = await MbkApi.getManualBank();
     if (mounted) {
       setState(() {
-        _manualBank = bank.data ?? FFAppState().manualBankInfo;
+        _manualBank = bank.data ?? appState.manualBankInfo;
         _isLoadingBank = false;
       });
     }
@@ -39,10 +42,26 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
   void _assignDedicatedAccount() async {
     setState(() => _isAssigning = true);
     final appState = Provider.of<FFAppState>(context, listen: false);
+    final res = await MbkApi.generateVirtualAccount();
     await appState.refreshWallet();
     if (mounted) {
       setState(() => _isAssigning = false);
-      showSuccessToast(context, 'Dedicated virtual accounts synchronized!');
+      if (res.success) {
+        showSuccessToast(context, 'Dedicated virtual accounts assigned successfully!');
+      } else {
+        showSuccessToast(context, 'Dedicated virtual accounts synchronized!');
+      }
+    }
+  }
+
+  Future<void> _refreshWalletBalance() async {
+    setState(() => _isRefreshingBalance = true);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    await appState.refreshWallet();
+    await appState.refreshTransactions();
+    if (mounted) {
+      setState(() => _isRefreshingBalance = false);
+      showSuccessToast(context, 'Wallet balance updated!');
     }
   }
 
@@ -68,11 +87,11 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
       }
     }
 
-    // Fallbacks from wallet fields
+    // Fallbacks from wallet fields (strict dynamic resolution)
     final palmpayNumber = palmpayAcc?.accountNumber ?? wallet.palmpayAccountNumber ?? '';
     final palmpayName = palmpayAcc?.accountName ?? wallet.palmpayAccountName ?? 'MBK-$userName';
 
-    final pagaNumber = pagaAcc?.accountNumber ?? wallet.pagaAccountNumber ?? (wallet.displayAccounts.isNotEmpty ? wallet.displayAccounts.first.accountNumber : '2535129544');
+    final pagaNumber = pagaAcc?.accountNumber ?? wallet.pagaAccountNumber ?? (wallet.displayAccounts.isNotEmpty && !wallet.displayAccounts.first.accountNumber.contains('Generating') ? wallet.displayAccounts.first.accountNumber : '');
     final pagaName = pagaAcc?.accountName ?? wallet.pagaAccountName ?? 'MBK-$userName';
 
     return Scaffold(
@@ -112,41 +131,69 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Current Available Balance Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
-                decoration: BoxDecoration(
-                  color: theme.secondaryBackground,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
+        child: RefreshIndicator(
+          color: const Color(0xFF0284C7),
+          onRefresh: _refreshWalletBalance,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Current Available Balance Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+                  decoration: BoxDecoration(
+                    color: theme.secondaryBackground,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Current Available Balance',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: theme.secondaryText,
-                        fontWeight: FontWeight.w600,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Current Available Balance',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.secondaryText,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: _refreshWalletBalance,
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.all(4.0),
+                              child: _isRefreshingBalance
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                                    )
+                                  : Icon(
+                                      Icons.refresh_rounded,
+                                      size: 15,
+                                      color: theme.secondaryText,
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      formatNaira(wallet.balance),
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0284C7),
+                      const SizedBox(height: 6),
+                      Text(
+                        formatNaira(wallet.balance),
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0284C7),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -335,7 +382,8 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildAccountCard({

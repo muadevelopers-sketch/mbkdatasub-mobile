@@ -34,9 +34,10 @@ class _DataPageState extends State<DataPage> {
     final appState = Provider.of<FFAppState>(context, listen: false);
     if (appState.dataPlans.isEmpty) {
       setState(() => _isLoadingPlans = true);
-      await appState.refreshDataPlans();
-      if (mounted) setState(() => _isLoadingPlans = false);
     }
+    await appState.refreshDataPlans();
+    await appState.refreshWallet();
+    if (mounted) setState(() => _isLoadingPlans = false);
   }
 
   final List<Map<String, dynamic>> _networks = [
@@ -250,9 +251,16 @@ class _DataPageState extends State<DataPage> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                child: Column(
+              child: RefreshIndicator(
+                color: theme.primaryAccent,
+                onRefresh: () async {
+                  await appState.refreshDataPlans();
+                  await appState.refreshWallet();
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Top Available Balance Card
@@ -715,6 +723,7 @@ class _DataPageState extends State<DataPage> {
                 ),
               ),
             ),
+          ),
 
             // Bottom Sticky Bar: Total to debit + Pay button
             Container(

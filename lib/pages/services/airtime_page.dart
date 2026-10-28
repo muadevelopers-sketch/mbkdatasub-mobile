@@ -21,6 +21,16 @@ class _AirtimePageState extends State<AirtimePage> {
   final _amountController = TextEditingController(text: '100');
   final List<double> _quickAmounts = [50, 100, 200, 500, 1000, 2000];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<FFAppState>(context, listen: false).refreshWallet();
+      }
+    });
+  }
+
   final List<Map<String, dynamic>> _networks = [
     {
       'id': 'MTN',

@@ -344,6 +344,30 @@ class MbkApi {
 
   static Future<ApiResult<WalletRecord>> fetchWallet() => getWallet();
 
+  static Future<ApiResult<WalletRecord>> generateVirtualAccount() async {
+    try {
+      final token = await getToken();
+      if (token == null) return ApiResult(success: false, message: 'Unauthenticated', statusCode: 401);
+
+      final res = await http.post(_buildUri('/wallet/generate-virtual-account'), headers: _headers(token));
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200 && body['success'] == true) {
+        final rawWallet = body['data'] ?? body['wallet'];
+        if (rawWallet != null && rawWallet is Map<String, dynamic>) {
+          return ApiResult(
+            success: true,
+            message: body['message'] ?? 'Virtual accounts generated.',
+            data: WalletRecord.fromJson(rawWallet),
+            statusCode: res.statusCode,
+          );
+        }
+      }
+      return ApiResult(success: false, message: body['message'] ?? 'Failed to generate virtual account.', statusCode: res.statusCode);
+    } catch (e) {
+      return ApiResult(success: false, message: 'Network error generating virtual account.', statusCode: 0);
+    }
+  }
+
   static Future<ApiResult<Map<String, dynamic>>> getManualBank() async {
     try {
       final token = await getToken();
