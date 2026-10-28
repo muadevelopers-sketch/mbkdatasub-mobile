@@ -37,7 +37,9 @@ class _HomeDashboardPageState extends State<HomeDashboardPage> {
   }
 
   void _openWhatsAppSupport() async {
-    const phone = '2348123456780';
+    final appState = FFAppState();
+    final rawPhone = appState.supportWhatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+    final phone = rawPhone.startsWith('0') ? '234${rawPhone.substring(1)}' : (rawPhone.isEmpty ? '2349047050681' : rawPhone);
     final url = Uri.parse('https://wa.me/$phone?text=Hello%20MBKDATASUB%20Support,%20I%20need%20assistance.');
     try {
       if (await canLaunchUrl(url)) {

@@ -18,6 +18,7 @@ class AddMoneyPage extends StatefulWidget {
 class _AddMoneyPageState extends State<AddMoneyPage> {
   Map<String, dynamic>? _manualBank;
   bool _isLoadingBank = false;
+  int _selectedBankIndex = 0;
 
   @override
   void initState() {
@@ -30,10 +31,40 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     final bank = await MbkApi.getManualBank();
     if (mounted) {
       setState(() {
-        _manualBank = bank.data;
+        _manualBank = bank.data ?? FFAppState().manualBankInfo;
         _isLoadingBank = false;
       });
     }
+  }
+
+  List<Map<String, String>> _getBankOptions() {
+    final list = <Map<String, String>>[];
+    final data = _manualBank ?? FFAppState().manualBankInfo;
+
+    final pBank = data['bankName']?.toString() ?? 'OPAY';
+    final pAcc = data['accountNumber']?.toString() ?? '8131555945';
+    final pName = data['accountName']?.toString() ?? 'ABDUSSALAM A SIRAJO';
+    list.add({'bank': pBank, 'account': pAcc, 'name': pName});
+
+    final palmAcc = data['palmpayAccount']?.toString();
+    final palmName = data['palmpayName']?.toString() ?? pName;
+    if (palmAcc != null && palmAcc.isNotEmpty && palmAcc != pAcc) {
+      list.add({'bank': 'PalmPay', 'account': palmAcc, 'name': palmName});
+    }
+
+    final monieAcc = data['moniepointAccount']?.toString();
+    final monieName = data['moniepointName']?.toString() ?? pName;
+    if (monieAcc != null && monieAcc.isNotEmpty && monieAcc != pAcc && monieAcc != palmAcc) {
+      list.add({'bank': 'Moniepoint MFB', 'account': monieAcc, 'name': monieName});
+    }
+
+    final wemaAcc = data['wemaAccount']?.toString();
+    final wemaName = data['wemaName']?.toString() ?? pName;
+    if (wemaAcc != null && wemaAcc.isNotEmpty && wemaAcc != pAcc && wemaAcc != monieAcc && wemaAcc != palmAcc) {
+      list.add({'bank': 'Wema Bank', 'account': wemaAcc, 'name': wemaName});
+    }
+
+    return list;
   }
 
   @override
@@ -122,104 +153,143 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
                 ),
                 child: _isLoadingBank
                     ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    : Builder(
+                        builder: (context) {
+                          final bankOptions = _getBankOptions();
+                          final currentBank = bankOptions.isNotEmpty && _selectedBankIndex < bankOptions.length
+                              ? bankOptions[_selectedBankIndex]
+                              : (bankOptions.isNotEmpty
+                                  ? bankOptions.first
+                                  : {'bank': 'OPAY', 'account': '8131555945', 'name': 'ABDUSSALAM A SIRAJO'});
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _manualBank?['bankName'] ?? 'Wema Bank',
-                                style: theme.titleLarge.override(fontWeight: FontWeight.w800, color: theme.primaryText),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFDCFCE7),
-                                  borderRadius: BorderRadius.circular(8),
+                              if (bankOptions.length > 1) ...[
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: List.generate(bankOptions.length, (idx) {
+                                      final isSel = idx == _selectedBankIndex;
+                                      final opt = bankOptions[idx];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8.0, bottom: 12.0),
+                                        child: ChoiceChip(
+                                          label: Text(opt['bank'] ?? 'Bank'),
+                                          selected: isSel,
+                                          onSelected: (val) {
+                                            if (val) setState(() => _selectedBankIndex = idx);
+                                          },
+                                          selectedColor: const Color(0xFFDCFCE7),
+                                          backgroundColor: const Color(0xFFF1F5F9),
+                                          labelStyle: TextStyle(
+                                            color: isSel ? const Color(0xFF166534) : const Color(0xFF475569),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                  ),
                                 ),
-                                child: Text('MANUAL', style: theme.labelSmall.override(color: theme.success, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              ],
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
-                                  const SizedBox(height: 2),
                                   Text(
-                                    _manualBank?['accountNumber'] ?? '9900000001',
-                                    style: theme.headlineSmall.override(
-                                      fontWeight: FontWeight.w900,
-                                      color: theme.primaryAccent,
-                                      letterSpacing: 1.2,
+                                    currentBank['bank'] ?? 'OPAY',
+                                    style: theme.titleLarge.override(fontWeight: FontWeight.w800, color: theme.primaryText),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFDCFCE7),
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
+                                    child: Text('MANUAL', style: theme.labelSmall.override(color: theme.success, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),
-                              IconButton(
-                                onPressed: () {
-                                  Clipboard.setData(ClipboardData(text: _manualBank?['accountNumber'] ?? '9900000001'));
-                                  showSuccessToast(context, 'Bank account number copied!');
-                                },
-                                icon: Icon(Icons.copy_rounded, color: theme.primaryAccent),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        currentBank['account'] ?? '8131555945',
+                                        style: theme.headlineSmall.override(
+                                          fontWeight: FontWeight.w900,
+                                          color: theme.primaryAccent,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  IconButton(
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(text: currentBank['account'] ?? '8131555945'));
+                                      showSuccessToast(context, 'Bank account number copied!');
+                                    },
+                                    icon: Icon(Icons.copy_rounded, color: theme.primaryAccent),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Account Name: ${_manualBank?['accountName'] ?? "MBKDATASUB VENTURES"}',
-                            style: theme.bodySmall.override(fontWeight: FontWeight.w600, color: theme.secondaryText),
-                          ),
-                          const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                          Text(
-                            _manualBank?['instructions'] ?? _manualBank?['instruction'] ?? 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
-                            style: theme.bodySmall.override(color: const Color(0xFF64748B), lineHeight: 1.35),
-                          ),
-                          if (_manualBank?['whatsappNotificationPhone'] != null && _manualBank!['whatsappNotificationPhone'].toString().isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            InkWell(
-                              onTap: () async {
-                                final phone = _manualBank!['whatsappNotificationPhone'].toString().replaceAll(RegExp(r'[^0-9]'), '');
-                                final intlPhone = phone.startsWith('0') ? '234${phone.substring(1)}' : phone;
-                                final url = Uri.parse('https://wa.me/$intlPhone?text=Hello%20MBKDATASUB,%20I%20have%20transferred%20funds%20to%20your%20manual%20bank%20account.%20Here%20is%20my%20receipt.');
-                                try {
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(url, mode: LaunchMode.externalApplication);
-                                  } else {
-                                    showInfoToast(context, 'WhatsApp: $intlPhone');
-                                  }
-                                } catch (_) {
-                                  showInfoToast(context, 'WhatsApp: $intlPhone');
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF22C55E),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Account Name: ${currentBank['name'] ?? "ABDUSSALAM A SIRAJO"}',
+                                style: theme.bodySmall.override(fontWeight: FontWeight.w600, color: theme.secondaryText),
+                              ),
+                              const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                              Text(
+                                _manualBank?['instructions'] ?? _manualBank?['instruction'] ?? 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant wallet credit.',
+                                style: theme.bodySmall.override(color: const Color(0xFF64748B), lineHeight: 1.35),
+                              ),
+                              if ((_manualBank?['whatsappNotificationPhone'] ?? FFAppState().supportWhatsapp).toString().isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                InkWell(
+                                  onTap: () async {
+                                    final raw = (_manualBank?['whatsappNotificationPhone'] ?? FFAppState().supportWhatsapp).toString().replaceAll(RegExp(r'[^0-9]'), '');
+                                    final intlPhone = raw.startsWith('0') ? '234${raw.substring(1)}' : (raw.isEmpty ? '2349047050681' : raw);
+                                    final url = Uri.parse('https://wa.me/$intlPhone?text=Hello%20MBKDATASUB,%20I%20have%20transferred%20funds%20to%20your%20manual%20bank%20account%20(${currentBank['bank']}%20${currentBank['account']}).%20Here%20is%20my%20receipt.');
+                                    try {
+                                      if (await canLaunchUrl(url)) {
+                                        await launchUrl(url, mode: LaunchMode.externalApplication);
+                                      } else {
+                                        showInfoToast(context, 'WhatsApp: $intlPhone');
+                                      }
+                                    } catch (_) {
+                                      showInfoToast(context, 'WhatsApp: $intlPhone');
+                                    }
+                                  },
                                   borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Submit Receipt on WhatsApp',
-                                      style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF22C55E),
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  ],
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Submit Receipt on WhatsApp',
+                                          style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ],
+                              ],
+                            ],
+                          );
+                        },
                       ),
               ),
               const SizedBox(height: 30),

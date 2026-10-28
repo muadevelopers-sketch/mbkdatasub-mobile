@@ -349,10 +349,13 @@ class MbkApi {
       final token = await getToken();
       var res = await http.get(_buildUri('/wallet/manual-bank'), headers: _headers(token));
       if (res.statusCode != 200) {
+        res = await http.get(_buildUri('/manual-bank'), headers: _headers(token));
+      }
+      if (res.statusCode != 200) {
         res = await http.get(_buildUri('/admin/bank'), headers: _headers(token));
       }
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['success'] == true) {
+      if (res.statusCode == 200 && (body['success'] == true || body['bank'] != null)) {
         final bData = body['data'] ?? body['bank'];
         if (bData != null && bData is Map<String, dynamic>) {
           return ApiResult(success: true, message: 'Bank info loaded', data: bData);
@@ -362,11 +365,19 @@ class MbkApi {
         success: true,
         message: 'Default bank',
         data: {
-          'bankName': 'Moniepoint Microfinance Bank',
-          'accountNumber': '8123456789',
-          'accountName': 'MBK TELECOMS LTD (OFFICIAL)',
-          'whatsappNotificationPhone': '08123456789',
-          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
+          'bankName': 'OPAY',
+          'accountNumber': '8131555945',
+          'accountName': 'ABDUSSALAM A SIRAJO',
+          'whatsappNotificationPhone': '2349047050681',
+          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant wallet credit.',
+          'palmpayAccount': '8131555945',
+          'palmpayName': 'ABDUSSALAM A SIRAJO',
+          'moniepointAccount': '8131555945',
+          'moniepointName': 'ABDUSSALAM A SIRAJO',
+          'wemaAccount': '8131555945',
+          'wemaName': 'ABDUSSALAM A SIRAJO',
+          'opayAccount': '8131555945',
+          'opayName': 'ABDUSSALAM A SIRAJO',
         },
       );
     } catch (_) {
@@ -374,11 +385,69 @@ class MbkApi {
         success: true,
         message: 'Offline bank fallback',
         data: {
-          'bankName': 'Moniepoint Microfinance Bank',
-          'accountNumber': '8123456789',
-          'accountName': 'MBK TELECOMS LTD (OFFICIAL)',
-          'whatsappNotificationPhone': '08123456789',
-          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
+          'bankName': 'OPAY',
+          'accountNumber': '8131555945',
+          'accountName': 'ABDUSSALAM A SIRAJO',
+          'whatsappNotificationPhone': '2349047050681',
+          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant wallet credit.',
+          'palmpayAccount': '8131555945',
+          'palmpayName': 'ABDUSSALAM A SIRAJO',
+          'moniepointAccount': '8131555945',
+          'moniepointName': 'ABDUSSALAM A SIRAJO',
+          'wemaAccount': '8131555945',
+          'wemaName': 'ABDUSSALAM A SIRAJO',
+          'opayAccount': '8131555945',
+          'opayName': 'ABDUSSALAM A SIRAJO',
+        },
+      );
+    }
+  }
+
+  static Future<ApiResult<Map<String, dynamic>>> getContactInfo() async {
+    try {
+      final token = await getToken();
+      var res = await http.get(_buildUri('/branding'), headers: _headers(token));
+      if (res.statusCode != 200) {
+        res = await http.get(_buildUri('/admin/branding'), headers: _headers(token));
+      }
+      if (res.statusCode != 200) {
+        res = await http.get(_buildUri('/contact'), headers: _headers(token));
+      }
+      final body = jsonDecode(res.body);
+      if (res.statusCode == 200 && (body['success'] == true || body['branding'] != null)) {
+        final bData = body['branding'] ?? body['data'] ?? body;
+        if (bData != null && bData is Map<String, dynamic>) {
+          return ApiResult(
+            success: true,
+            message: 'Contact info loaded',
+            data: {
+              'supportPhone': bData['supportPhone']?.toString() ?? '+2349047050681',
+              'supportWhatsapp': bData['supportWhatsapp']?.toString() ?? '2349047050681',
+              'supportEmail': bData['supportEmail']?.toString() ?? 'support@mbkdatasub.com.ng',
+              'siteName': bData['siteName']?.toString() ?? 'MBKDATASUB',
+            },
+          );
+        }
+      }
+      return ApiResult(
+        success: true,
+        message: 'Default contact info',
+        data: {
+          'supportPhone': '+2349047050681',
+          'supportWhatsapp': '2349047050681',
+          'supportEmail': 'support@mbkdatasub.com.ng',
+          'siteName': 'MBKDATASUB',
+        },
+      );
+    } catch (_) {
+      return ApiResult(
+        success: true,
+        message: 'Offline contact fallback',
+        data: {
+          'supportPhone': '+2349047050681',
+          'supportWhatsapp': '2349047050681',
+          'supportEmail': 'support@mbkdatasub.com.ng',
+          'siteName': 'MBKDATASUB',
         },
       );
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../backend/api_requests/api_calls.dart';
+import '../../backend/app_state.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
@@ -17,12 +18,22 @@ class _SupportPageState extends State<SupportPage> {
   final _messageController = TextEditingController();
   bool _isSubmitting = false;
 
+  @override
+  void initState() {
+    super.initState();
+    FFAppState().refreshContactInfo();
+  }
+
   void _openWhatsApp() async {
-    const phone = '2348123456780';
+    final appState = FFAppState();
+    final rawPhone = appState.supportWhatsapp.replaceAll(RegExp(r'[^0-9]'), '');
+    final phone = rawPhone.startsWith('0') ? '234${rawPhone.substring(1)}' : (rawPhone.isEmpty ? '2349047050681' : rawPhone);
     final url = Uri.parse('https://wa.me/$phone?text=Hello%20MBKDATASUB%20Support,%20I%20need%20assistance.');
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        showInfoToast(context, 'WhatsApp: +$phone');
       }
     } catch (_) {
       showInfoToast(context, 'WhatsApp: +$phone');
@@ -30,14 +41,33 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   void _openCall() async {
-    const phone = '+2348123456780';
+    final appState = FFAppState();
+    final rawPhone = appState.supportPhone.trim();
+    final phone = rawPhone.isEmpty ? '+2349047050681' : rawPhone;
     final url = Uri.parse('tel:$phone');
     try {
       if (await canLaunchUrl(url)) {
         await launchUrl(url);
+      } else {
+        showInfoToast(context, 'Phone: $phone');
       }
     } catch (_) {
       showInfoToast(context, 'Phone: $phone');
+    }
+  }
+
+  void _openEmail() async {
+    final appState = FFAppState();
+    final email = appState.supportEmail.trim().isEmpty ? 'support@mbkdatasub.com.ng' : appState.supportEmail.trim();
+    final url = Uri.parse('mailto:$email?subject=MBKDATASUB%20Support%20Enquiry');
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url);
+      } else {
+        showInfoToast(context, 'Email: $email');
+      }
+    } catch (_) {
+      showInfoToast(context, 'Email: $email');
     }
   }
 
@@ -95,51 +125,75 @@ class _SupportPageState extends State<SupportPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Contact Channels Row
+              // Contact Channels Row (WhatsApp, Phone Call, Email)
               Row(
                 children: [
                   Expanded(
                     child: InkWell(
                       onTap: _openWhatsApp,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: const Color(0xFF86EFAC)),
                         ),
                         child: Column(
                           children: [
-                            const Icon(Icons.chat_bubble_rounded, color: Color(0xFF16A34A), size: 30),
-                            const SizedBox(height: 8),
-                            Text('WhatsApp', style: theme.titleSmall.override(fontWeight: FontWeight.w800, color: const Color(0xFF166534))),
+                            const Icon(Icons.chat_bubble_rounded, color: Color(0xFF16A34A), size: 26),
+                            const SizedBox(height: 6),
+                            Text('WhatsApp', style: theme.titleSmall.override(fontWeight: FontWeight.w800, color: const Color(0xFF166534), fontSize: 13)),
                             const SizedBox(height: 2),
-                            Text('Instant Chat', style: theme.labelSmall.override(color: const Color(0xFF15803D), fontSize: 11)),
+                            Text('Chat Now', style: theme.labelSmall.override(color: const Color(0xFF15803D), fontSize: 10)),
                           ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: InkWell(
                       onTap: _openCall,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEEF4FF),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: const Color(0xFFC7D2FE)),
                         ),
                         child: Column(
                           children: [
-                            Icon(Icons.phone_in_talk_rounded, color: theme.primaryAccent, size: 30),
-                            const SizedBox(height: 8),
-                            Text('Direct Call', style: theme.titleSmall.override(fontWeight: FontWeight.w800, color: theme.primary)),
+                            Icon(Icons.phone_in_talk_rounded, color: theme.primaryAccent, size: 26),
+                            const SizedBox(height: 6),
+                            Text('Phone Call', style: theme.titleSmall.override(fontWeight: FontWeight.w800, color: theme.primary, fontSize: 13)),
                             const SizedBox(height: 2),
-                            Text('+234 812 345 6780', style: theme.labelSmall.override(color: theme.primaryAccent, fontSize: 11)),
+                            Text(FFAppState().supportPhone, style: theme.labelSmall.override(color: theme.primaryAccent, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _openEmail,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF3C7),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(Icons.email_rounded, color: Color(0xFFD97706), size: 26),
+                            const SizedBox(height: 6),
+                            Text('Email Us', style: theme.titleSmall.override(fontWeight: FontWeight.w800, color: const Color(0xFF92400E), fontSize: 13)),
+                            const SizedBox(height: 2),
+                            Text('Official Desk', style: theme.labelSmall.override(color: const Color(0xFFB45309), fontSize: 10)),
                           ],
                         ),
                       ),

@@ -32,6 +32,24 @@ class FFAppState extends ChangeNotifier {
   ];
   List<String> get announcements => _announcements;
 
+  String _supportPhone = '+2349047050681';
+  String get supportPhone => _supportPhone;
+
+  String _supportWhatsapp = '2349047050681';
+  String get supportWhatsapp => _supportWhatsapp;
+
+  String _supportEmail = 'support@mbkdatasub.com.ng';
+  String get supportEmail => _supportEmail;
+
+  Map<String, dynamic> _manualBankInfo = {
+    'bankName': 'OPAY',
+    'accountNumber': '8131555945',
+    'accountName': 'ABDUSSALAM A SIRAJO',
+    'whatsappNotificationPhone': '2349047050681',
+    'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant wallet credit.',
+  };
+  Map<String, dynamic> get manualBankInfo => _manualBankInfo;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -42,6 +60,14 @@ class FFAppState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isWalletHidden = prefs.getBool('mbk_hide_wallet') ?? false;
+
+      // Restore cached contact details immediately
+      final cachedPhone = prefs.getString('mbk_support_phone');
+      if (cachedPhone != null && cachedPhone.isNotEmpty) _supportPhone = cachedPhone;
+      final cachedWa = prefs.getString('mbk_support_whatsapp');
+      if (cachedWa != null && cachedWa.isNotEmpty) _supportWhatsapp = cachedWa;
+      final cachedEmail = prefs.getString('mbk_support_email');
+      if (cachedEmail != null && cachedEmail.isNotEmpty) _supportEmail = cachedEmail;
 
       final token = await MbkApi.getToken();
       if (token != null && token.isNotEmpty) {
@@ -59,11 +85,41 @@ class FFAppState extends ChangeNotifier {
 
       await loadAnnouncements();
       await refreshDataPlans();
+      await refreshContactInfo();
+      await refreshManualBank();
     } catch (_) {
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> refreshContactInfo() async {
+    try {
+      final res = await MbkApi.getContactInfo();
+      if (res.success && res.data != null) {
+        final d = res.data!;
+        if (d['supportPhone'] != null) _supportPhone = d['supportPhone'].toString();
+        if (d['supportWhatsapp'] != null) _supportWhatsapp = d['supportWhatsapp'].toString();
+        if (d['supportEmail'] != null) _supportEmail = d['supportEmail'].toString();
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('mbk_support_phone', _supportPhone);
+        await prefs.setString('mbk_support_whatsapp', _supportWhatsapp);
+        await prefs.setString('mbk_support_email', _supportEmail);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> refreshManualBank() async {
+    try {
+      final res = await MbkApi.getManualBank();
+      if (res.success && res.data != null) {
+        _manualBankInfo = res.data!;
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
   void setUser(UserRecord user) {
