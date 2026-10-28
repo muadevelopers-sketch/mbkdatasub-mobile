@@ -3,6 +3,7 @@ class UserRecord {
   final String fullName;
   final String email;
   final String phone;
+  String get phoneNumber => phone;
   final String role;
   final int kycTier;
   final String referralCode;

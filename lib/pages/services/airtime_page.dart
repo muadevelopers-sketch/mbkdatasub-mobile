@@ -64,7 +64,7 @@ class _AirtimePageState extends State<AirtimePage> {
 
   void _useMyPhone() {
     final appState = Provider.of<FFAppState>(context, listen: false);
-    final myPhone = appState.user?.phoneNumber ?? '';
+    final myPhone = appState.user?.phone ?? '';
     if (myPhone.isNotEmpty) {
       setState(() {
         _phoneController.text = myPhone;
