@@ -59,43 +59,72 @@ class _CustomPinPadWidgetState extends State<CustomPinPadWidget> {
     } catch (_) {}
   }
 
-  Widget _buildDot(int index, FlutterFlowTheme theme) {
+  Widget _buildDot(int index, FlutterFlowTheme theme, bool isDark) {
     final bool filled = index < _pin.length;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.symmetric(horizontal: 10),
-      width: 16,
-      height: 16,
+      width: 14,
+      height: 14,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: filled ? theme.primaryAccent : const Color(0xFFE2E8F0),
+        color: filled
+            ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7))
+            : Colors.transparent,
         border: Border.all(
-          color: filled ? theme.primaryAccent : const Color(0xFFCBD5E1),
-          width: 1.5,
+          color: filled
+              ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7))
+              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+          width: 1.8,
         ),
       ),
     );
   }
 
-  Widget _buildKey(String text, FlutterFlowTheme theme) {
-    return InkWell(
-      onTap: () => _onKeyPress(text),
-      borderRadius: BorderRadius.circular(40),
-      child: Container(
-        width: 68,
-        height: 68,
-        alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-        ),
-        child: Text(
-          text,
-          style: theme.displaySmall.override(
-            fontSize: 26,
-            fontWeight: FontWeight.w600,
-            color: theme.primaryText,
+  Widget _buildRectKey({
+    required Widget child,
+    required VoidCallback onTap,
+    required FlutterFlowTheme theme,
+    required bool isDark,
+    bool isHighlighted = false,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            height: 58,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isHighlighted
+                    ? (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7))
+                    : (isDark ? const Color(0xFF263248) : const Color(0xFFE2E8F0)),
+                width: isHighlighted ? 1.5 : 1,
+              ),
+            ),
+            child: child,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberKey(String text, FlutterFlowTheme theme, bool isDark) {
+    return _buildRectKey(
+      onTap: () => _onKeyPress(text),
+      theme: theme,
+      isDark: isDark,
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: theme.primaryText,
         ),
       ),
     );
@@ -104,6 +133,7 @@ class _CustomPinPadWidgetState extends State<CustomPinPadWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+    final isDark = theme.isDark;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -111,9 +141,9 @@ class _CustomPinPadWidgetState extends State<CustomPinPadWidget> {
         // 4 PIN Indicator Dots
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(4, (i) => _buildDot(i, theme)),
+          children: List.generate(4, (i) => _buildDot(i, theme, isDark)),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
         // Keypad Grid
         Container(
@@ -121,66 +151,54 @@ class _CustomPinPadWidgetState extends State<CustomPinPadWidget> {
           child: Column(
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildKey('1', theme),
-                  _buildKey('2', theme),
-                  _buildKey('3', theme),
+                  _buildNumberKey('1', theme, isDark),
+                  _buildNumberKey('2', theme, isDark),
+                  _buildNumberKey('3', theme, isDark),
                 ],
               ),
-              const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildKey('4', theme),
-                  _buildKey('5', theme),
-                  _buildKey('6', theme),
+                  _buildNumberKey('4', theme, isDark),
+                  _buildNumberKey('5', theme, isDark),
+                  _buildNumberKey('6', theme, isDark),
                 ],
               ),
-              const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildKey('7', theme),
-                  _buildKey('8', theme),
-                  _buildKey('9', theme),
+                  _buildNumberKey('7', theme, isDark),
+                  _buildNumberKey('8', theme, isDark),
+                  _buildNumberKey('9', theme, isDark),
                 ],
               ),
-              const SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Biometric or info button
+                  // Fingerprint Button (Highlighted with blue border)
                   widget.showBiometrics
-                      ? InkWell(
+                      ? _buildRectKey(
                           onTap: _triggerBiometric,
-                          borderRadius: BorderRadius.circular(40),
-                          child: Container(
-                            width: 68,
-                            height: 68,
-                            alignment: Alignment.center,
-                            child: Icon(
-                              Icons.fingerprint_rounded,
-                              size: 32,
-                              color: theme.primaryAccent,
-                            ),
+                          theme: theme,
+                          isDark: isDark,
+                          isHighlighted: true,
+                          child: Icon(
+                            Icons.fingerprint_rounded,
+                            size: 26,
+                            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                           ),
                         )
-                      : const SizedBox(width: 68, height: 68),
-                  _buildKey('0', theme),
-                  // Backspace button
-                  InkWell(
+                      : const Spacer(),
+
+                  _buildNumberKey('0', theme, isDark),
+
+                  // Backspace Button
+                  _buildRectKey(
                     onTap: _onBackspace,
-                    borderRadius: BorderRadius.circular(40),
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.backspace_outlined,
-                        size: 26,
-                        color: theme.error,
-                      ),
+                    theme: theme,
+                    isDark: isDark,
+                    child: Icon(
+                      Icons.backspace_outlined,
+                      size: 22,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
                   ),
                 ],

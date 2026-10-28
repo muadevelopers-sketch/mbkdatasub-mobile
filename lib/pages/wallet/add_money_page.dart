@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../backend/schema/struct/wallet_record.dart';
@@ -18,7 +17,7 @@ class AddMoneyPage extends StatefulWidget {
 class _AddMoneyPageState extends State<AddMoneyPage> {
   Map<String, dynamic>? _manualBank;
   bool _isLoadingBank = false;
-  int _selectedBankIndex = 0;
+  bool _isAssigning = false;
 
   @override
   void initState() {
@@ -37,41 +36,44 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     }
   }
 
-  List<Map<String, String>> _getBankOptions() {
-    final list = <Map<String, String>>[];
-    final data = _manualBank ?? FFAppState().manualBankInfo;
-
-    final pBank = data['bankName']?.toString() ?? 'OPAY';
-    final pAcc = data['accountNumber']?.toString() ?? '8131555945';
-    final pName = data['accountName']?.toString() ?? 'ABDUSSALAM A SIRAJO';
-    list.add({'bank': pBank, 'account': pAcc, 'name': pName});
-
-    final palmAcc = data['palmpayAccount']?.toString();
-    final palmName = data['palmpayName']?.toString() ?? pName;
-    if (palmAcc != null && palmAcc.isNotEmpty && palmAcc != pAcc) {
-      list.add({'bank': 'PalmPay', 'account': palmAcc, 'name': palmName});
+  void _assignDedicatedAccount() async {
+    setState(() => _isAssigning = true);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    await appState.refreshWallet();
+    if (mounted) {
+      setState(() => _isAssigning = false);
+      showSuccessToast(context, 'Dedicated virtual accounts synchronized!');
     }
-
-    final monieAcc = data['moniepointAccount']?.toString();
-    final monieName = data['moniepointName']?.toString() ?? pName;
-    if (monieAcc != null && monieAcc.isNotEmpty && monieAcc != pAcc && monieAcc != palmAcc) {
-      list.add({'bank': 'Moniepoint MFB', 'account': monieAcc, 'name': monieName});
-    }
-
-    final wemaAcc = data['wemaAccount']?.toString();
-    final wemaName = data['wemaName']?.toString() ?? pName;
-    if (wemaAcc != null && wemaAcc.isNotEmpty && wemaAcc != pAcc && wemaAcc != monieAcc && wemaAcc != palmAcc) {
-      list.add({'bank': 'Wema Bank', 'account': wemaAcc, 'name': wemaName});
-    }
-
-    return list;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+    final isDark = theme.isDark;
     final appState = Provider.of<FFAppState>(context);
     final wallet = appState.wallet;
+    final user = appState.user;
+    final userName = user != null && user.fullName.isNotEmpty ? user.fullName : 'UMMULKHAIRI IDRIS';
+
+    // Extract PalmPay and Paga accounts
+    DedicatedAccount? palmpayAcc;
+    DedicatedAccount? pagaAcc;
+
+    for (final acc in wallet.displayAccounts) {
+      final name = acc.bankName.toLowerCase();
+      if (name.contains('palm') && palmpayAcc == null) {
+        palmpayAcc = acc;
+      } else if (name.contains('paga') && pagaAcc == null) {
+        pagaAcc = acc;
+      }
+    }
+
+    // Fallbacks from wallet fields
+    final palmpayNumber = palmpayAcc?.accountNumber ?? wallet.palmpayAccountNumber ?? '';
+    final palmpayName = palmpayAcc?.accountName ?? wallet.palmpayAccountName ?? 'MBK-$userName';
+
+    final pagaNumber = pagaAcc?.accountNumber ?? wallet.pagaAccountNumber ?? (wallet.displayAccounts.isNotEmpty ? wallet.displayAccounts.first.accountNumber : '2535129544');
+    final pagaName = pagaAcc?.accountName ?? wallet.pagaAccountName ?? 'MBK-$userName';
 
     return Scaffold(
       backgroundColor: theme.primaryBackground,
@@ -85,213 +87,249 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
             borderRadius: BorderRadius.circular(20),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.secondaryBackground,
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
+                ),
               ),
-              child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Color(0xFF0F172A)),
+              child: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 16,
+                color: theme.primaryText,
+              ),
             ),
           ),
         ),
         title: Text(
           'Fund Wallet',
-          style: theme.titleLarge.override(fontWeight: FontWeight.w800, color: theme.primaryText),
+          style: theme.titleMedium.override(
+            fontWeight: FontWeight.w800,
+            color: theme.primaryText,
+            fontSize: 17,
+          ),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Notice Card
+              // 1. Current Available Balance Card
               Container(
-                padding: const EdgeInsets.all(16),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF4FF),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFC7D2FE)),
+                  color: theme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
+                  ),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Icon(Icons.bolt_rounded, color: theme.primaryAccent, size: 26),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Transfer directly to either of your permanent dedicated accounts below. Your wallet balance credits automatically in seconds.',
-                        style: theme.bodySmall.override(color: theme.primary, lineHeight: 1.4, fontWeight: FontWeight.w600),
+                    Text(
+                      'Current Available Balance',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatNaira(wallet.balance),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0284C7),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF10B981)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Instant Automated Credit • 0% Charges',
+                            style: TextStyle(
+                              color: Color(0xFF059669),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-
-              Text('Automated Virtual Accounts', style: theme.titleMedium.override(fontWeight: FontWeight.w800, color: theme.primaryText)),
-              const SizedBox(height: 12),
-
-              // Dedicated Automated Bank Accounts
-              if (wallet.displayAccounts.isNotEmpty)
-                ...wallet.displayAccounts.map((acc) => _buildDedicatedCard(acc, theme, context))
-              else
-                _buildPlaceholderCard('PalmPay Bank', wallet.virtualAccountNumber ?? 'Generating dedicated account...', theme, context),
 
               const SizedBox(height: 24),
 
-              // Manual Bank Transfer Option
-              Text('Manual Bank Deposit (Zero Fee)', style: theme.titleMedium.override(fontWeight: FontWeight.w800, color: theme.primaryText)),
-              const SizedBox(height: 12),
+              // 2. Section Header: Your Dedicated Virtual Accounts + Assign Button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your Dedicated Virtual Accounts',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: theme.primaryText,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Transfer funds from any bank app, USSD, OPay or Kuda directly to either account below. Your wallet will be credited automatically.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: theme.secondaryText,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  InkWell(
+                    onTap: _isAssigning ? null : _assignDedicatedAccount,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0F9FF),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.refresh_rounded,
+                            size: 13,
+                            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _isAssigning ? 'Syncing...' : 'Assign',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
 
+              const SizedBox(height: 16),
+
+              // 3. PalmPay Virtual Bank Card
+              _buildAccountCard(
+                context: context,
+                badgeTitle: 'PALMPAY VIRTUAL BANK',
+                badgeBg: isDark ? const Color(0xFF0C4A6E) : const Color(0xFFE0F2FE),
+                badgeColor: const Color(0xFF0284C7),
+                accountNumber: palmpayNumber,
+                beneficiaryName: palmpayName,
+                copyPillBg: const Color(0xFFE0F2FE),
+                copyPillColor: const Color(0xFF0284C7),
+                isAssigned: palmpayNumber.isNotEmpty && RegExp(r'^[0-9]+$').hasMatch(palmpayNumber),
+                onAssignTap: _assignDedicatedAccount,
+                theme: theme,
+                isDark: isDark,
+              ),
+
+              const SizedBox(height: 14),
+
+              // 4. Paga Virtual Bank Card
+              _buildAccountCard(
+                context: context,
+                badgeTitle: 'PAGA VIRTUAL BANK',
+                badgeBg: isDark ? const Color(0xFF78350F) : const Color(0xFFFEF3C7),
+                badgeColor: const Color(0xFFD97706),
+                accountNumber: pagaNumber,
+                beneficiaryName: pagaName,
+                copyPillBg: const Color(0xFFFEF3C7),
+                copyPillColor: const Color(0xFFD97706),
+                isAssigned: pagaNumber.isNotEmpty && RegExp(r'^[0-9]+$').hasMatch(pagaNumber),
+                onAssignTap: _assignDedicatedAccount,
+                theme: theme,
+                isDark: isDark,
+              ),
+
+              const SizedBox(height: 24),
+
+              // 5. How to Fund Your Wallet Guide Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  color: theme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
+                  ),
                 ),
-                child: _isLoadingBank
-                    ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
-                    : Builder(
-                        builder: (context) {
-                          final bankOptions = _getBankOptions();
-                          final currentBank = bankOptions.isNotEmpty && _selectedBankIndex < bankOptions.length
-                              ? bankOptions[_selectedBankIndex]
-                              : (bankOptions.isNotEmpty
-                                  ? bankOptions.first
-                                  : {'bank': 'OPAY', 'account': '8131555945', 'name': 'ABDUSSALAM A SIRAJO'});
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (bankOptions.length > 1) ...[
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: Row(
-                                    children: List.generate(bankOptions.length, (idx) {
-                                      final isSel = idx == _selectedBankIndex;
-                                      final opt = bankOptions[idx];
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 8.0, bottom: 12.0),
-                                        child: ChoiceChip(
-                                          label: Text(opt['bank'] ?? 'Bank'),
-                                          selected: isSel,
-                                          onSelected: (val) {
-                                            if (val) setState(() => _selectedBankIndex = idx);
-                                          },
-                                          selectedColor: const Color(0xFFDCFCE7),
-                                          backgroundColor: const Color(0xFFF1F5F9),
-                                          labelStyle: TextStyle(
-                                            color: isSel ? const Color(0xFF166534) : const Color(0xFF475569),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                ),
-                              ],
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    currentBank['bank'] ?? 'OPAY',
-                                    style: theme.titleLarge.override(fontWeight: FontWeight.w800, color: theme.primaryText),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text('MANUAL', style: theme.labelSmall.override(color: theme.success, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        currentBank['account'] ?? '8131555945',
-                                        style: theme.headlineSmall.override(
-                                          fontWeight: FontWeight.w900,
-                                          color: theme.primaryAccent,
-                                          letterSpacing: 1.2,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-                                      Clipboard.setData(ClipboardData(text: currentBank['account'] ?? '8131555945'));
-                                      showSuccessToast(context, 'Bank account number copied!');
-                                    },
-                                    icon: Icon(Icons.copy_rounded, color: theme.primaryAccent),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Account Name: ${currentBank['name'] ?? "ABDUSSALAM A SIRAJO"}',
-                                style: theme.bodySmall.override(fontWeight: FontWeight.w600, color: theme.secondaryText),
-                              ),
-                              const Divider(height: 24, color: Color(0xFFF1F5F9)),
-                              Text(
-                                _manualBank?['instructions'] ?? _manualBank?['instruction'] ?? 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant wallet credit.',
-                                style: theme.bodySmall.override(color: const Color(0xFF64748B), lineHeight: 1.35),
-                              ),
-                              if ((_manualBank?['whatsappNotificationPhone'] ?? FFAppState().supportWhatsapp).toString().isNotEmpty) ...[
-                                const SizedBox(height: 16),
-                                InkWell(
-                                  onTap: () async {
-                                    final raw = (_manualBank?['whatsappNotificationPhone'] ?? FFAppState().supportWhatsapp).toString().replaceAll(RegExp(r'[^0-9]'), '');
-                                    final intlPhone = raw.startsWith('0') ? '234${raw.substring(1)}' : (raw.isEmpty ? '2349047050681' : raw);
-                                    final url = Uri.parse('https://wa.me/$intlPhone?text=Hello%20MBKDATASUB,%20I%20have%20transferred%20funds%20to%20your%20manual%20bank%20account%20(${currentBank['bank']}%20${currentBank['account']}).%20Here%20is%20my%20receipt.');
-                                    try {
-                                      if (await canLaunchUrl(url)) {
-                                        await launchUrl(url, mode: LaunchMode.externalApplication);
-                                      } else {
-                                        showInfoToast(context, 'WhatsApp: $intlPhone');
-                                      }
-                                    } catch (_) {
-                                      showInfoToast(context, 'WhatsApp: $intlPhone');
-                                    }
-                                  },
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF22C55E),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Submit Receipt on WhatsApp',
-                                          style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          );
-                        },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'How to Fund Your Wallet:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: theme.primaryText,
                       ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    _buildGuideStep(
+                      stepNumber: '1',
+                      text: 'Copy either the PalmPay or Paga account number above.',
+                      theme: theme,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildGuideStep(
+                      stepNumber: '2',
+                      text: 'Open your mobile banking app or dial your bank USSD code.',
+                      theme: theme,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 12),
+
+                    _buildGuideStep(
+                      stepNumber: '3',
+                      text: 'Transfer the desired amount. Your MBK DATASUB balance updates in seconds.',
+                      theme: theme,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
               ),
+
               const SizedBox(height: 30),
             ],
           ),
@@ -300,107 +338,162 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     );
   }
 
-  Widget _buildDedicatedCard(DedicatedAccount acc, FlutterFlowTheme theme, BuildContext context) {
-    final isGenerating = acc.accountNumber == 'Generating...';
-    final isMaintenance = acc.accountNumber.toLowerCase().contains('maintenance') || acc.accountNumber.toLowerCase().contains('unavailable');
-    final isActionable = !isGenerating && !isMaintenance && acc.accountNumber.trim().length >= 8 && RegExp(r'^[0-9]+$').hasMatch(acc.accountNumber.trim());
-
+  Widget _buildAccountCard({
+    required BuildContext context,
+    required String badgeTitle,
+    required Color badgeBg,
+    required Color badgeColor,
+    required String accountNumber,
+    required String beneficiaryName,
+    required Color copyPillBg,
+    required Color copyPillColor,
+    required bool isAssigned,
+    required VoidCallback onAssignTap,
+    required FlutterFlowTheme theme,
+    required bool isDark,
+  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: theme.secondaryBackground,
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: acc.type == 'palmpay' ? const Color(0xFFE0E7FF) : const Color(0xFFFFEDD5),
+          color: isDark ? const Color(0xFF262E3D) : const Color(0xFFE2E8F0),
         ),
-        boxShadow: const [
-          BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 4)),
-        ],
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(
+                  color: Color(0x06000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 3),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row: Bank Pill Left, AUTOMATED Pill Right
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                acc.bankName,
-                style: theme.titleLarge.override(
-                  fontWeight: FontWeight.w800,
-                  color: theme.primaryText,
-                ),
-              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActionable ? const Color(0xFFEEF4FF) : const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(10),
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  isActionable ? 'AUTOMATED' : (isMaintenance ? 'MAINTENANCE' : 'SYNCING'),
-                  style: theme.labelSmall.override(
-                    fontSize: 10,
+                  badgeTitle,
+                  style: TextStyle(
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w800,
-                    color: isActionable ? theme.primaryAccent : const Color(0xFFB45309),
+                    letterSpacing: 0.5,
+                    color: badgeColor,
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF064E3B) : const Color(0xFFDCFCE7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
-                    const SizedBox(height: 2),
+                    Icon(Icons.circle, size: 7, color: Color(0xFF16A34A)),
+                    SizedBox(width: 4),
                     Text(
-                      acc.accountNumber,
-                      style: theme.displaySmall.override(
-                        fontSize: isActionable ? 22 : 13,
-                        fontWeight: FontWeight.w900,
-                        color: isActionable ? theme.primary : (isMaintenance ? const Color(0xFFB45309) : theme.secondaryText),
-                        letterSpacing: isActionable ? 1.5 : 0.2,
+                      'AUTOMATED',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF16A34A),
                       ),
                     ),
                   ],
                 ),
               ),
-              if (isActionable)
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Middle Row: Account Number OR Tap to Assign link
+          if (isAssigned) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  accountNumber,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: theme.primaryText,
+                  ),
+                ),
                 InkWell(
                   onTap: () {
-                    Clipboard.setData(ClipboardData(text: acc.accountNumber));
-                    showSuccessToast(context, '${acc.bankName} account number copied!');
+                    Clipboard.setData(ClipboardData(text: accountNumber));
+                    showSuccessToast(context, 'Account number copied: $accountNumber');
                   },
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: theme.primary,
+                      color: isDark ? const Color(0xFF1E293B) : copyPillBg,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
-                        const SizedBox(width: 6),
+                        Icon(Icons.copy_rounded, size: 14, color: copyPillColor),
+                        const SizedBox(width: 4),
                         Text(
                           'Copy',
-                          style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: copyPillColor,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
+              ],
+            ),
+          ] else ...[
+            InkWell(
+              onTap: onAssignTap,
+              child: const Row(
+                children: [
+                  Icon(Icons.refresh_rounded, size: 16, color: Color(0xFF0284C7)),
+                  SizedBox(width: 6),
+                  Text(
+                    'Tap to Assign Account',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0284C7),
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 10),
+
+          // Beneficiary Name
           Text(
-            'Account Name: ${acc.accountName}',
-            style: theme.bodySmall.override(
+            'Beneficiary: $beneficiaryName',
+            style: TextStyle(
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: theme.secondaryText,
             ),
@@ -410,22 +503,44 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
     );
   }
 
-  Widget _buildPlaceholderCard(String bank, String number, FlutterFlowTheme theme, BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(bank, style: theme.titleLarge.override(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text(number, style: theme.titleMedium.override(fontWeight: FontWeight.w700, color: theme.primaryAccent)),
-        ],
-      ),
+  Widget _buildGuideStep({
+    required String stepNumber,
+    required String text,
+    required FlutterFlowTheme theme,
+    required bool isDark,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0F2FE),
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            stepNumber,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0284C7),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: theme.secondaryText,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

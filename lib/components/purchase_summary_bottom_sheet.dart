@@ -3,9 +3,8 @@ import 'package:provider/provider.dart';
 import '../backend/app_state.dart';
 import '../flutter_flow/flutter_flow_theme.dart';
 import '../flutter_flow/flutter_flow_util.dart';
-import '../flutter_flow/flutter_flow_widgets.dart';
-import '../pages/wallet/add_money_page.dart';
 import 'custom_pin_pad_widget.dart';
+import 'transaction_status_modal.dart';
 
 class PurchaseSummaryBottomSheet extends StatefulWidget {
   const PurchaseSummaryBottomSheet({
@@ -43,6 +42,7 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
   @override
   Widget build(BuildContext context) {
     final theme = FlutterFlowTheme.of(context);
+    final isDark = theme.isDark;
     final appState = Provider.of<FFAppState>(context);
     final walletBalance = appState.wallet.balance;
     final isInsufficient = walletBalance < widget.amount;
@@ -54,200 +54,227 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
           color: theme.secondaryBackground,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-          // Drag handle
-          Container(
-            width: 48,
-            height: 5,
-            decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Header
-          Row(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(Icons.phone_android_rounded, color: theme.primary, size: 26),
-              const SizedBox(width: 10),
-              Text(
-                'Purchase Summary',
-                style: theme.headlineSmall.override(
-                  fontWeight: FontWeight.w800,
-                  color: theme.primaryText,
+              // Drag Handle
+              Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-          // Summary Details Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: theme.primaryBackground,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Column(
-              children: [
-                _buildRow('Network / Provider', widget.provider, theme),
-                const Divider(height: 20, color: Color(0xFFE2E8F0)),
-                _buildRow('Recipient', widget.recipient, theme),
-                const Divider(height: 20, color: Color(0xFFE2E8F0)),
-                _buildRow('Package / Service', widget.serviceDescription, theme),
-                const Divider(height: 20, color: Color(0xFFE2E8F0)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Header: Shield Icon + "Authorize Payment" + Close 'X'
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0F2FE),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      size: 20,
+                      color: Color(0xFF0284C7),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Authorize Payment',
+                    style: theme.titleMedium.override(
+                      fontWeight: FontWeight.w800,
+                      color: theme.primaryText,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.close_rounded, size: 16, color: theme.secondaryText),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // Summary Card (White / Dark with border)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF101522) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF263248) : const Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
                   children: [
-                    Text('Total Amount', style: theme.titleMedium.override(color: theme.secondaryText)),
+                    Text(
+                      widget.provider.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                        color: theme.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.recipient,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: theme.primaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.serviceDescription,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       formatNaira(widget.amount),
-                      style: theme.headlineSmall.override(
-                        color: theme.primaryAccent,
-                        fontWeight: FontWeight.w800,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0284C7),
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 20, color: Color(0xFFE2E8F0)),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Your Wallet Balance', style: theme.bodyMedium.override(color: theme.secondaryText)),
-                    Text(
-                      formatNaira(walletBalance),
-                      style: theme.titleSmall.override(
-                        color: isInsufficient ? const Color(0xFFDC2626) : theme.success,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          if (isInsufficient) ...[
-            // Insufficient Balance Warning Card
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFFECACA)),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 28),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Insufficient Balance',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF991B1B),
-                          ),
+
+              const SizedBox(height: 16),
+
+              if (isInsufficient) ...[
+                // If insufficient balance, show prompt to open Insufficient Dialog
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showDialog(
+                        context: context,
+                        builder: (_) => InsufficientBalanceDialog(
+                          requiredAmount: widget.amount,
+                          currentBalance: walletBalance,
+                          serviceTitle: widget.provider,
                         ),
-                        const SizedBox(height: 3),
+                      );
+                    },
+                    icon: const Icon(Icons.warning_amber_rounded, size: 18, color: Colors.white),
+                    label: const Text(
+                      'Check Insufficient Balance',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Biometric 1-Tap Button
+                InkWell(
+                  onTap: () => _handlePin(''),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.fingerprint_rounded,
+                          size: 22,
+                          color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
-                          'Your balance is ${formatNaira(walletBalance)}. You need ${formatNaira(widget.amount - walletBalance)} more to complete this order.',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFFB91C1C),
-                            height: 1.35,
+                          '1-Tap Authorize with Biometric / Fingerprint',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            FFButtonWidget(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddMoneyPage()),
-                );
-              },
-              text: 'Fund Wallet to Proceed',
-              iconData: Icons.account_balance_wallet_rounded,
-              options: FFButtonOptions(
-                width: double.infinity,
-                height: 52,
-                color: theme.primary,
-                textStyle: theme.titleSmall.override(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
                 ),
-                borderRadius: BorderRadius.circular(16),
-                elevation: 2,
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 24),
-            // Instructions
-            Text(
-              'Enter your 4-digit PIN to confirm transaction',
-              style: theme.labelMedium.override(color: theme.secondaryText),
-            ),
-            const SizedBox(height: 18),
 
-            // PIN Pad or Loader
-            if (_isProcessing)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Column(
-                  children: [
-                    CircularProgressIndicator(color: theme.primaryAccent),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Processing payment securely...',
-                      style: theme.titleSmall.override(color: theme.primaryText),
+                const SizedBox(height: 16),
+
+                Text(
+                  'Or Enter 4-Digit Security PIN',
+                  style: theme.labelSmall.override(
+                    color: theme.secondaryText,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                if (_isProcessing)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(
+                          color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Authorizing transaction securely...',
+                          style: theme.titleSmall.override(
+                            color: theme.primaryText,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              )
-            else
-              CustomPinPadWidget(
-                onPinCompleted: _handlePin,
-                onBiometricAuthenticated: () => _handlePin(''),
-              ),
-          ],
-        ],
-      ),
-    ));
-  }
-
-  Widget _buildRow(String label, String value, FlutterFlowTheme theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: theme.bodyMedium.override(color: theme.secondaryText)),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: theme.titleSmall.override(
-              fontWeight: FontWeight.w700,
-              color: theme.primaryText,
-            ),
+                  )
+                else
+                  CustomPinPadWidget(
+                    showBiometrics: false,
+                    onPinCompleted: _handlePin,
+                  ),
+              ],
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

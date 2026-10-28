@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../backend/app_state.dart';
 
 abstract class FlutterFlowTheme {
   static FlutterFlowTheme of(BuildContext context) {
-    return LightModeTheme();
+    try {
+      final isDark = Provider.of<FFAppState>(context, listen: true).isDarkMode;
+      return isDark ? DarkModeTheme() : LightModeTheme();
+    } catch (_) {
+      return LightModeTheme();
+    }
   }
 
+  late bool isDark;
   late Color primary;
   late Color primaryDark;
   late Color primaryAccent;
@@ -16,6 +24,7 @@ abstract class FlutterFlowTheme {
   late Color secondaryText;
   late Color primaryBackground;
   late Color secondaryBackground;
+  late Color cardBorder;
   late Color accent1;
   late Color accent2;
   late Color accent3;
@@ -43,15 +52,16 @@ abstract class FlutterFlowTheme {
 }
 
 class LightModeTheme extends FlutterFlowTheme {
-  // Brand colors extracted from sample screenshots & MBK logo
   @override
-  Color primary = const Color(0xFF0A1C6A); // Deep Royal Navy (Header & Main CTAs)
+  bool isDark = false;
   @override
-  Color primaryDark = const Color(0xFF07134B); // Dark Navy Depth
+  Color primary = const Color(0xFF0A1C6A); // Deep Royal Navy
   @override
-  Color primaryAccent = const Color(0xFF1E5BF8); // Electric Royal Blue (Active Badges, Links)
+  Color primaryDark = const Color(0xFF07134B);
   @override
-  Color secondary = const Color(0xFF2563EB); // Vibrant Blue
+  Color primaryAccent = const Color(0xFF1E5BF8); // Electric Royal Blue
+  @override
+  Color secondary = const Color(0xFF0284C7); // Cyan / Blue Accent
   @override
   Color tertiary = const Color(0xFFEEF4FF); // Soft Ice-Blue Pill Surface
   @override
@@ -65,6 +75,8 @@ class LightModeTheme extends FlutterFlowTheme {
   @override
   Color secondaryBackground = const Color(0xFFFFFFFF); // Crisp Card White
   @override
+  Color cardBorder = const Color(0xFFE2E8F0);
+  @override
   Color accent1 = const Color(0x331E5BF8);
   @override
   Color accent2 = const Color(0x332563EB);
@@ -73,11 +85,11 @@ class LightModeTheme extends FlutterFlowTheme {
   @override
   Color accent4 = const Color(0xFF94A3B8);
   @override
-  Color success = const Color(0xFF22C55E); // Green Badge & Checkmarks
+  Color success = const Color(0xFF10B981); // Emerald Green
   @override
   Color warning = const Color(0xFFF59E0B);
   @override
-  Color error = const Color(0xFFEF4444); // Red Failures & Account Deletion
+  Color error = const Color(0xFFEF4444);
   @override
   Color info = const Color(0xFF0284C7);
 
@@ -114,13 +126,147 @@ class LightModeTheme extends FlutterFlowTheme {
   @override
   TextStyle get headlineSmall => GoogleFonts.plusJakartaSans(
         color: primaryText,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w700,
         fontSize: 18.0,
       );
   @override
   TextStyle get titleLarge => GoogleFonts.plusJakartaSans(
         color: primaryText,
+        fontWeight: FontWeight.w700,
+        fontSize: 16.0,
+      );
+  @override
+  TextStyle get titleMedium => GoogleFonts.plusJakartaSans(
+        color: primaryText,
         fontWeight: FontWeight.w600,
+        fontSize: 14.0,
+      );
+  @override
+  TextStyle get titleSmall => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w600,
+        fontSize: 13.0,
+      );
+  @override
+  TextStyle get labelLarge => GoogleFonts.inter(
+        color: secondaryText,
+        fontWeight: FontWeight.w500,
+        fontSize: 14.0,
+      );
+  @override
+  TextStyle get labelMedium => GoogleFonts.inter(
+        color: secondaryText,
+        fontWeight: FontWeight.w500,
+        fontSize: 12.0,
+      );
+  @override
+  TextStyle get labelSmall => GoogleFonts.inter(
+        color: secondaryText,
+        fontWeight: FontWeight.w500,
+        fontSize: 11.0,
+      );
+  @override
+  TextStyle get bodyLarge => GoogleFonts.inter(
+        color: primaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 14.0,
+      );
+  @override
+  TextStyle get bodyMedium => GoogleFonts.inter(
+        color: primaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 13.0,
+      );
+  @override
+  TextStyle get bodySmall => GoogleFonts.inter(
+        color: secondaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 12.0,
+      );
+}
+
+class DarkModeTheme extends FlutterFlowTheme {
+  @override
+  bool isDark = true;
+  @override
+  Color primary = const Color(0xFF2563EB); // Vibrant Electric Blue
+  @override
+  Color primaryDark = const Color(0xFF1D4ED8);
+  @override
+  Color primaryAccent = const Color(0xFF38BDF8); // Sky Blue Accent
+  @override
+  Color secondary = const Color(0xFF38BDF8);
+  @override
+  Color tertiary = const Color(0xFF1E293B); // Dark Pill Surface
+  @override
+  Color alternate = const Color(0xFF1E293B);
+  @override
+  Color primaryText = const Color(0xFFFFFFFF); // High Contrast White
+  @override
+  Color secondaryText = const Color(0xFF94A3B8); // Muted Slate
+  @override
+  Color primaryBackground = const Color(0xFF0B0F17); // Deep OLED/Slate Background
+  @override
+  Color secondaryBackground = const Color(0xFF161B26); // Dark Navy Card Background
+  @override
+  Color cardBorder = const Color(0xFF262E3D); // Subtle Dark Card Border
+  @override
+  Color accent1 = const Color(0x3338BDF8);
+  @override
+  Color accent2 = const Color(0x332563EB);
+  @override
+  Color accent3 = const Color(0xFF262E3D);
+  @override
+  Color accent4 = const Color(0xFF64748B);
+  @override
+  Color success = const Color(0xFF34D399); // Minty Green
+  @override
+  Color warning = const Color(0xFFFBBF24);
+  @override
+  Color error = const Color(0xFFF87171);
+  @override
+  Color info = const Color(0xFF38BDF8);
+
+  @override
+  TextStyle get displayLarge => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w800,
+        fontSize: 32.0,
+      );
+  @override
+  TextStyle get displayMedium => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w800,
+        fontSize: 28.0,
+      );
+  @override
+  TextStyle get displaySmall => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w700,
+        fontSize: 24.0,
+      );
+  @override
+  TextStyle get headlineLarge => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w700,
+        fontSize: 22.0,
+      );
+  @override
+  TextStyle get headlineMedium => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w700,
+        fontSize: 20.0,
+      );
+  @override
+  TextStyle get headlineSmall => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w700,
+        fontSize: 18.0,
+      );
+  @override
+  TextStyle get titleLarge => GoogleFonts.plusJakartaSans(
+        color: primaryText,
+        fontWeight: FontWeight.w700,
         fontSize: 16.0,
       );
   @override

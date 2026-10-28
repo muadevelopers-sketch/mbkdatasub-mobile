@@ -21,6 +21,9 @@ class FFAppState extends ChangeNotifier {
   bool _isWalletHidden = false;
   bool get isWalletHidden => _isWalletHidden;
 
+  bool _isDarkMode = false;
+  bool get isDarkMode => _isDarkMode;
+
   List<DataPlanRecord> _dataPlans = [];
   List<DataPlanRecord> get dataPlans => _dataPlans;
 
@@ -60,6 +63,7 @@ class FFAppState extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isWalletHidden = prefs.getBool('mbk_hide_wallet') ?? false;
+      _isDarkMode = prefs.getBool('mbk_dark_mode') ?? false;
 
       // Restore cached contact details immediately
       final cachedPhone = prefs.getString('mbk_support_phone');
@@ -166,6 +170,13 @@ class FFAppState extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('mbk_hide_wallet', _isWalletHidden);
+  }
+
+  void toggleDarkMode() async {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('mbk_dark_mode', _isDarkMode);
   }
 
   Future<void> logout() async {

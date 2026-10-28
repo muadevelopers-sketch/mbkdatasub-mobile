@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../backend/app_state.dart';
-import '../backend/schema/struct/wallet_record.dart';
 import '../flutter_flow/flutter_flow_theme.dart';
 import '../flutter_flow/flutter_flow_util.dart';
-import 'provider_logo_widget.dart';
+import '../pages/wallet/add_money_page.dart';
+import '../pages/main/history_page.dart';
 
 class WalletCardWidget extends StatelessWidget {
   const WalletCardWidget({super.key});
@@ -16,164 +15,305 @@ class WalletCardWidget extends StatelessWidget {
     final appState = Provider.of<FFAppState>(context);
     final wallet = appState.wallet;
     final isHidden = appState.isWalletHidden;
-    final accounts = wallet.displayAccounts;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.secondaryBackground,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 18,
-            offset: Offset(0, 6),
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF201B5A),
+                Color(0xFF2C247A),
+                Color(0xFF38299C),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33201B5A),
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left Section: Balance & Bonus
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              // Top Action Row
+              Row(
+                children: [
+                  // Active Wallet Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
+                        Icon(Icons.bolt_rounded, size: 14, color: Colors.white),
+                        SizedBox(width: 4),
                         Text(
-                          'Wallet Balance',
-                          style: theme.labelMedium.override(
-                            color: theme.secondaryText,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        InkWell(
-                          onTap: () => appState.toggleWalletHidden(),
-                          child: Icon(
-                            isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                            size: 18,
-                            color: theme.secondaryText,
+                          'ACTIVE WALLET',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.6,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      isHidden ? '••••••••' : formatNaira(wallet.balance),
-                      style: theme.displaySmall.override(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: theme.primaryText,
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Eye Toggle Button
+                  InkWell(
+                    onTap: () => appState.toggleWalletHidden(),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isHidden ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 15,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          'Bonus ',
-                          style: theme.labelSmall.override(
-                            color: theme.success,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          '₦0.00',
-                          style: theme.labelSmall.override(
-                            color: theme.success,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                  ),
+                  const SizedBox(width: 6),
+
+                  // Refresh Button
+                  InkWell(
+                    onTap: () async {
+                      await appState.refreshWallet();
+                      if (context.mounted) {
+                        showSuccessToast(context, 'Wallet balance updated');
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        size: 15,
+                        color: Colors.white,
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const Spacer(),
+
+                  // History ↗ Pill Button
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HistoryPage()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'History',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.north_east_rounded, size: 13, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
-              // Right Section: Dedicated PalmPay & Paga Accounts (Stacked)
-              Expanded(
-                flex: 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: accounts.map((acc) => _buildAccountPill(acc, context, theme)).toList(),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+              const SizedBox(height: 18),
 
-  Widget _buildAccountPill(DedicatedAccount acc, BuildContext context, FlutterFlowTheme theme) {
-    final isGenerating = acc.accountNumber == 'Generating...';
-    final isMaintenance = acc.accountNumber.toLowerCase().contains('maintenance') || acc.accountNumber.toLowerCase().contains('unavailable');
-    final isActionable = !isGenerating && !isMaintenance && acc.accountNumber.trim().length >= 8 && RegExp(r'^[0-9]+$').hasMatch(acc.accountNumber.trim());
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: acc.type == 'palmpay' ? const Color(0xFFE0E7FF) : const Color(0xFFFFEDD5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ProviderLogoWidget(
-            providerName: acc.type,
-            size: 20,
-            borderRadius: 6,
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
+              // Available Balance Label
               Text(
-                acc.bankName,
-                style: theme.labelSmall.override(
+                'AVAILABLE BALANCE',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.75),
                   fontSize: 10,
-                  color: theme.secondaryText,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 0.9,
                 ),
               ),
+              const SizedBox(height: 4),
+
+              // Amount
               Text(
-                acc.accountNumber,
-                style: theme.titleSmall.override(
-                  fontSize: isMaintenance ? 10 : 12,
-                  fontWeight: FontWeight.w800,
-                  color: isActionable
-                      ? theme.primaryText
-                      : (isMaintenance ? const Color(0xFFD97706) : theme.secondaryText),
+                isHidden ? '₦••••••••' : formatNaira(wallet.balance),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
                 ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Bottom Actions Row: Fund Wallet + Stats
+              Row(
+                children: [
+                  // + Fund Wallet Button
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AddMoneyPage()),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1F000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, size: 16, color: Color(0xFF0F172A)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Fund Wallet',
+                            style: TextStyle(
+                              color: Color(0xFF0F172A),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Funded Stat
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'FUNDED',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.65),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatNaira(wallet.totalFunded),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Spent Stat
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'SPENT',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.65),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatNaira(wallet.totalSpent),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(width: 6),
-          if (isActionable)
-            InkWell(
-              onTap: () {
-                Clipboard.setData(ClipboardData(text: acc.accountNumber));
-                showSuccessToast(context, '${acc.bankName} copied!');
-              },
-              child: Icon(
-                Icons.copy_rounded,
-                size: 14,
-                color: theme.primaryAccent,
+        ),
+
+        const SizedBox(height: 12),
+
+        // Carousel Indicator Dots
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 22,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0091FF),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-        ],
-      ),
+            const SizedBox(width: 6),
+            Container(
+              width: 5,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 5,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
