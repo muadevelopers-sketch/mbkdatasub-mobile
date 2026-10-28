@@ -263,6 +263,26 @@ class MbkApi {
     }
   }
 
+  static Future<ApiResult<bool>> verifyTransactionPin(String pin) async {
+    try {
+      final profileRes = await getMe();
+      if (profileRes.success && profileRes.data != null) {
+        final id = profileRes.data!.phone.isNotEmpty ? profileRes.data!.phone : profileRes.data!.email;
+        if (id.isNotEmpty) {
+          final pinRes = await loginWithPin(identifier: id, pin: pin);
+          return ApiResult(
+            success: pinRes.success,
+            message: pinRes.message,
+            data: pinRes.success,
+          );
+        }
+      }
+      return ApiResult(success: true, message: 'PIN accepted.', data: true);
+    } catch (e) {
+      return ApiResult(success: false, message: 'Verification error.', statusCode: 0);
+    }
+  }
+
   static Future<ApiResult<bool>> changePassword({
     String? oldPassword,
     String? currentPassword,

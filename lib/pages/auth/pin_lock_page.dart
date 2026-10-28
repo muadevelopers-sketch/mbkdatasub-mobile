@@ -61,11 +61,20 @@ class _PinLockPageState extends State<PinLockPage> {
       _errorMessage = '';
     });
 
-    final res = await MbkApi.verifyTransactionPin(pin);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    final savedPin = await appState.getSavedTransactionPin();
+
+    bool isMatch = false;
+    if (savedPin != null && savedPin.isNotEmpty && savedPin == pin.trim()) {
+      isMatch = true;
+    } else {
+      final res = await MbkApi.verifyTransactionPin(pin);
+      isMatch = res.success;
+    }
+
     if (mounted) {
       setState(() => _isVerifying = false);
-      if (res.success) {
-        final appState = Provider.of<FFAppState>(context, listen: false);
+      if (isMatch) {
         await appState.saveTransactionPin(pin);
         appState.unlockApp();
         if (Navigator.canPop(context)) {
