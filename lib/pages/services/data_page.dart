@@ -20,6 +20,22 @@ class _DataPageState extends State<DataPage> {
   String _selectedNetwork = 'MTN';
   String _selectedType = 'ALL';
   final _phoneController = TextEditingController();
+  bool _isLoadingPlans = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlansIfNeeded();
+  }
+
+  void _fetchPlansIfNeeded() async {
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    if (appState.dataPlans.isEmpty) {
+      setState(() => _isLoadingPlans = true);
+      await appState.refreshDataPlans();
+      if (mounted) setState(() => _isLoadingPlans = false);
+    }
+  }
 
   final List<Map<String, String>> _networks = [
     {'name': 'MTN', 'label': 'MTN'},
@@ -129,11 +145,30 @@ class _DataPageState extends State<DataPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: _isLoadingPlans
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.refresh_rounded, color: Color(0xFF0F172A)),
+            onPressed: () async {
+              setState(() => _isLoadingPlans = true);
+              await Provider.of<FFAppState>(context, listen: false).refreshDataPlans();
+              if (mounted) {
+                setState(() => _isLoadingPlans = false);
+                showSuccessToast(context, 'Data plans refreshed from server!');
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-          child: Column(
+        child: RefreshIndicator(
+          onRefresh: () => Provider.of<FFAppState>(context, listen: false).refreshDataPlans(),
+          color: theme.primaryAccent,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Network Selector Row (Matching Image 6)
@@ -371,6 +406,7 @@ class _DataPageState extends State<DataPage> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }

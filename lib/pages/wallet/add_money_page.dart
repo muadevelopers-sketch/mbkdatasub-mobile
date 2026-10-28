@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../backend/api_requests/api_calls.dart';
 import '../../backend/app_state.dart';
 import '../../backend/schema/struct/wallet_record.dart';
@@ -176,9 +177,48 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
                           ),
                           const Divider(height: 24, color: Color(0xFFF1F5F9)),
                           Text(
-                            _manualBank?['instruction'] ?? 'Transfer directly and contact WhatsApp support with your payment receipt for instant confirmation.',
-                            style: theme.bodySmall.override(color: const Color(0xFF64748B), lineHeight: 1.3),
+                            _manualBank?['instructions'] ?? _manualBank?['instruction'] ?? 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
+                            style: theme.bodySmall.override(color: const Color(0xFF64748B), lineHeight: 1.35),
                           ),
+                          if (_manualBank?['whatsappNotificationPhone'] != null && _manualBank!['whatsappNotificationPhone'].toString().isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            InkWell(
+                              onTap: () async {
+                                final phone = _manualBank!['whatsappNotificationPhone'].toString().replaceAll(RegExp(r'[^0-9]'), '');
+                                final intlPhone = phone.startsWith('0') ? '234${phone.substring(1)}' : phone;
+                                final url = Uri.parse('https://wa.me/$intlPhone?text=Hello%20MBKDATASUB,%20I%20have%20transferred%20funds%20to%20your%20manual%20bank%20account.%20Here%20is%20my%20receipt.');
+                                try {
+                                  if (await canLaunchUrl(url)) {
+                                    await launchUrl(url, mode: LaunchMode.externalApplication);
+                                  } else {
+                                    showInfoToast(context, 'WhatsApp: $intlPhone');
+                                  }
+                                } catch (_) {
+                                  showInfoToast(context, 'WhatsApp: $intlPhone');
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF22C55E),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Submit Receipt on WhatsApp',
+                                      style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
               ),
@@ -191,13 +231,19 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
   }
 
   Widget _buildDedicatedCard(DedicatedAccount acc, FlutterFlowTheme theme, BuildContext context) {
+    final isGenerating = acc.accountNumber == 'Generating...';
+    final isMaintenance = acc.accountNumber.toLowerCase().contains('maintenance') || acc.accountNumber.toLowerCase().contains('unavailable');
+    final isActionable = !isGenerating && !isMaintenance && acc.accountNumber.trim().length >= 8 && RegExp(r'^[0-9]+$').hasMatch(acc.accountNumber.trim());
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(
+          color: acc.type == 'palmpay' ? const Color(0xFFE0E7FF) : const Color(0xFFFFEDD5),
+        ),
         boxShadow: const [
           BoxShadow(color: Color(0x06000000), blurRadius: 10, offset: Offset(0, 4)),
         ],
@@ -218,15 +264,15 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF4FF),
+                  color: isActionable ? const Color(0xFFEEF4FF) : const Color(0xFFFEF3C7),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  'AUTOMATED',
+                  isActionable ? 'AUTOMATED' : (isMaintenance ? 'MAINTENANCE' : 'SYNCING'),
                   style: theme.labelSmall.override(
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
-                    color: theme.primaryAccent,
+                    color: isActionable ? theme.primaryAccent : const Color(0xFFB45309),
                   ),
                 ),
               ),
@@ -236,46 +282,49 @@ class _AddMoneyPageState extends State<AddMoneyPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
-                  const SizedBox(height: 2),
-                  Text(
-                    acc.accountNumber,
-                    style: theme.displaySmall.override(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: theme.primary,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-              InkWell(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: acc.accountNumber));
-                  showSuccessToast(context, '${acc.bankName} account number copied!');
-                },
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: theme.primary,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Copy',
-                        style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Account Number', style: theme.labelSmall.override(color: theme.secondaryText)),
+                    const SizedBox(height: 2),
+                    Text(
+                      acc.accountNumber,
+                      style: theme.displaySmall.override(
+                        fontSize: isActionable ? 22 : 13,
+                        fontWeight: FontWeight.w900,
+                        color: isActionable ? theme.primary : (isMaintenance ? const Color(0xFFB45309) : theme.secondaryText),
+                        letterSpacing: isActionable ? 1.5 : 0.2,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
+              if (isActionable)
+                InkWell(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: acc.accountNumber));
+                    showSuccessToast(context, '${acc.bankName} account number copied!');
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: theme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Copy',
+                          style: theme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),

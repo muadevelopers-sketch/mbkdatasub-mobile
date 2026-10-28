@@ -113,6 +113,8 @@ class WalletCardWidget extends StatelessWidget {
 
   Widget _buildAccountPill(DedicatedAccount acc, BuildContext context, FlutterFlowTheme theme) {
     final isGenerating = acc.accountNumber == 'Generating...';
+    final isMaintenance = acc.accountNumber.toLowerCase().contains('maintenance') || acc.accountNumber.toLowerCase().contains('unavailable');
+    final isActionable = !isGenerating && !isMaintenance && acc.accountNumber.trim().length >= 8 && RegExp(r'^[0-9]+$').hasMatch(acc.accountNumber.trim());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
@@ -148,15 +150,17 @@ class WalletCardWidget extends StatelessWidget {
               Text(
                 acc.accountNumber,
                 style: theme.titleSmall.override(
-                  fontSize: 12,
+                  fontSize: isMaintenance ? 10 : 12,
                   fontWeight: FontWeight.w800,
-                  color: isGenerating ? theme.secondaryText : theme.primaryText,
+                  color: isActionable
+                      ? theme.primaryText
+                      : (isMaintenance ? const Color(0xFFD97706) : theme.secondaryText),
                 ),
               ),
             ],
           ),
           const SizedBox(width: 6),
-          if (!isGenerating)
+          if (isActionable)
             InkWell(
               onTap: () {
                 Clipboard.setData(ClipboardData(text: acc.accountNumber));

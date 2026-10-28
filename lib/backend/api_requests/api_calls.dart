@@ -326,12 +326,15 @@ class MbkApi {
       final res = await http.get(_buildUri('/wallet'), headers: _headers(token));
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        return ApiResult(
-          success: true,
-          message: 'Wallet retrieved',
-          data: WalletRecord.fromJson(body['data']),
-          statusCode: res.statusCode,
-        );
+        final rawWallet = body['data'] ?? body['wallet'];
+        if (rawWallet != null && rawWallet is Map<String, dynamic>) {
+          return ApiResult(
+            success: true,
+            message: 'Wallet retrieved',
+            data: WalletRecord.fromJson(rawWallet),
+            statusCode: res.statusCode,
+          );
+        }
       }
       return ApiResult(success: false, message: body['message'] ?? 'Failed to get wallet', statusCode: res.statusCode);
     } catch (e) {
@@ -343,18 +346,27 @@ class MbkApi {
 
   static Future<ApiResult<Map<String, dynamic>>> getManualBank() async {
     try {
-      final res = await http.get(_buildUri('/admin/bank'), headers: _headers(null));
+      final token = await getToken();
+      var res = await http.get(_buildUri('/wallet/manual-bank'), headers: _headers(token));
+      if (res.statusCode != 200) {
+        res = await http.get(_buildUri('/admin/bank'), headers: _headers(token));
+      }
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        return ApiResult(success: true, message: 'Bank info loaded', data: body['data']);
+        final bData = body['data'] ?? body['bank'];
+        if (bData != null && bData is Map<String, dynamic>) {
+          return ApiResult(success: true, message: 'Bank info loaded', data: bData);
+        }
       }
       return ApiResult(
         success: true,
         message: 'Default bank',
         data: {
-          'bankName': 'OPay / PalmPay',
-          'accountNumber': '9012345678',
-          'accountName': 'MBKDATASUB ENTERPRISE',
+          'bankName': 'Moniepoint Microfinance Bank',
+          'accountNumber': '8123456789',
+          'accountName': 'MBK TELECOMS LTD (OFFICIAL)',
+          'whatsappNotificationPhone': '08123456789',
+          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
         },
       );
     } catch (_) {
@@ -362,9 +374,11 @@ class MbkApi {
         success: true,
         message: 'Offline bank fallback',
         data: {
-          'bankName': 'OPay / PalmPay',
-          'accountNumber': '9012345678',
-          'accountName': 'MBKDATASUB ENTERPRISE',
+          'bankName': 'Moniepoint Microfinance Bank',
+          'accountNumber': '8123456789',
+          'accountName': 'MBK TELECOMS LTD (OFFICIAL)',
+          'whatsappNotificationPhone': '08123456789',
+          'instructions': 'Transfer exact amount, include registered phone as reference, and submit receipt to WhatsApp for instant 3-minute wallet credit.',
         },
       );
     }
@@ -376,11 +390,14 @@ class MbkApi {
     try {
       final token = await getToken();
       final q = network != null ? {'network': network.toUpperCase()} : null;
-      final res = await http.get(_buildUri('/services/data/plans', q), headers: _headers(token));
+      var res = await http.get(_buildUri('/services/data/plans', q), headers: _headers(token));
+      if (res.statusCode != 200) {
+        res = await http.get(_buildUri('/admin/plans', q), headers: _headers(token));
+      }
 
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        final List list = body['data'] ?? [];
+        final List list = (body['data'] ?? body['plans']) ?? [];
         final plans = list.map((p) => DataPlanRecord.fromJson(p)).toList();
         return ApiResult(success: true, message: 'Plans loaded', data: plans, statusCode: res.statusCode);
       }
@@ -727,7 +744,7 @@ class MbkApi {
 
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        final List list = body['data'] ?? [];
+        final List list = (body['data'] ?? body['transactions']) ?? [];
         final txs = list.map((t) => TransactionRecord.fromJson(t)).toList();
         return ApiResult(success: true, message: 'Transactions loaded', data: txs, statusCode: res.statusCode);
       }

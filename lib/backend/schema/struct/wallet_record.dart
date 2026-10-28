@@ -64,14 +64,33 @@ class WalletRecord {
     }
 
     final virt = json['virtualAccount'];
+    String? pNum = json['palmpayAccountNumber']?.toString();
+    String? pagNum = json['pagaAccountNumber']?.toString();
+
+    if (rawAccounts is List) {
+      for (final a in rawAccounts) {
+        if (a is Map<String, dynamic>) {
+          final t = a['type']?.toString().toLowerCase() ?? '';
+          final b = a['bankName']?.toString().toLowerCase() ?? '';
+          final num = a['accountNumber']?.toString() ?? '';
+          if ((t.contains('paga') || b.contains('paga')) && num.length >= 8 && (pagNum == null || pagNum.isEmpty)) {
+            pagNum = num;
+          }
+          if ((t.contains('palm') || b.contains('palm')) && num.length >= 8 && (pNum == null || pNum.isEmpty)) {
+            pNum = num;
+          }
+        }
+      }
+    }
+
     return WalletRecord(
       balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
       totalFunded: (json['totalFunded'] as num?)?.toDouble() ?? 0.0,
       totalSpent: (json['totalSpent'] as num?)?.toDouble() ?? 0.0,
-      palmpayAccountNumber: json['palmpayAccountNumber']?.toString(),
+      palmpayAccountNumber: pNum,
       palmpayBankName: json['palmpayBankName']?.toString() ?? 'PalmPay',
       palmpayAccountName: json['palmpayAccountName']?.toString(),
-      pagaAccountNumber: json['pagaAccountNumber']?.toString(),
+      pagaAccountNumber: pagNum,
       pagaBankName: json['pagaBankName']?.toString() ?? 'Paga',
       pagaAccountName: json['pagaAccountName']?.toString(),
       virtualAccountNumber: virt != null ? virt['accountNumber']?.toString() : json['virtualAccountNumber']?.toString(),
@@ -81,35 +100,11 @@ class WalletRecord {
     );
   }
 
-  // GUARANTEED: Always returns BOTH PalmPay AND Paga Dedicated Accounts
+  // GUARANTEED: Always returns Dedicated Accounts with real-time active status
   List<DedicatedAccount> get displayAccounts {
     final list = <DedicatedAccount>[];
 
-    // 1. Dedicated PalmPay
-    String palmNum = '';
-    if (palmpayAccountNumber != null && palmpayAccountNumber!.trim().length >= 8) {
-      palmNum = palmpayAccountNumber!.trim();
-    } else {
-      for (final a in accounts) {
-        if ((a.type.toLowerCase().contains('palm') || a.bankName.toLowerCase().contains('palm')) &&
-            a.accountNumber.trim().length >= 8) {
-          palmNum = a.accountNumber.trim();
-          break;
-        }
-      }
-    }
-    if (palmNum.isEmpty && virtualAccountNumber != null && virtualAccountNumber!.trim().length >= 8) {
-      palmNum = virtualAccountNumber!.trim();
-    }
-
-    list.add(DedicatedAccount(
-      bankName: 'PalmPay Bank',
-      accountNumber: palmNum.isNotEmpty ? palmNum : 'Generating...',
-      accountName: palmpayAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
-      type: 'palmpay',
-    ));
-
-    // 2. Dedicated Paga
+    // 1. Dedicated Paga (Live & instant!)
     String pagaNum = '';
     if (pagaAccountNumber != null && pagaAccountNumber!.trim().length >= 8) {
       pagaNum = pagaAccountNumber!.trim();
@@ -123,12 +118,59 @@ class WalletRecord {
       }
     }
 
-    list.add(DedicatedAccount(
-      bankName: 'Paga Bank',
-      accountNumber: pagaNum.isNotEmpty ? pagaNum : 'Generating...',
-      accountName: pagaAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
-      type: 'paga',
-    ));
+    // 2. Dedicated PalmPay
+    String palmNum = '';
+    if (palmpayAccountNumber != null && palmpayAccountNumber!.trim().length >= 8) {
+      palmNum = palmpayAccountNumber!.trim();
+    } else {
+      for (final a in accounts) {
+        if ((a.type.toLowerCase().contains('palm') || a.bankName.toLowerCase().contains('palm')) &&
+            a.accountNumber.trim().length >= 8) {
+          palmNum = a.accountNumber.trim();
+          break;
+        }
+      }
+    }
+
+    if (pagaNum.isNotEmpty) {
+      list.add(DedicatedAccount(
+        bankName: 'Paga Bank',
+        accountNumber: pagaNum,
+        accountName: pagaAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
+        type: 'paga',
+      ));
+    }
+
+    if (palmNum.isNotEmpty && palmNum != pagaNum) {
+      list.add(DedicatedAccount(
+        bankName: 'PalmPay Bank',
+        accountNumber: palmNum,
+        accountName: palmpayAccountName ?? virtualAccountName ?? 'MBK Dedicated Account',
+        type: 'palmpay',
+      ));
+    } else if (pagaNum.isNotEmpty) {
+      // Paga is active, inform user that PalmPay is in temporary maintenance on Aspfiy
+      list.add(DedicatedAccount(
+        bankName: 'PalmPay Bank',
+        accountNumber: 'Temporary Maintenance',
+        accountName: 'Please use Paga for instant automated deposit',
+        type: 'palmpay',
+      ));
+    } else {
+      // Still generating
+      list.add(DedicatedAccount(
+        bankName: 'Paga Bank',
+        accountNumber: 'Generating...',
+        accountName: 'MBK Dedicated Account',
+        type: 'paga',
+      ));
+      list.add(DedicatedAccount(
+        bankName: 'PalmPay Bank',
+        accountNumber: 'Generating...',
+        accountName: 'MBK Dedicated Account',
+        type: 'palmpay',
+      ));
+    }
 
     return list;
   }
