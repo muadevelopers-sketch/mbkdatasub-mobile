@@ -58,7 +58,6 @@ class _AirtimePageState extends State<AirtimePage> {
         serviceDescription: '₦${amount.toStringAsFixed(0)} (Pay ₦${toPay.toStringAsFixed(2)})',
         amount: toPay,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context); // close summary sheet
           final res = await MbkApi.buyAirtime(
             network: _selectedNetwork,
             phone: phone,
@@ -67,6 +66,7 @@ class _AirtimePageState extends State<AirtimePage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             showModalBottomSheet(

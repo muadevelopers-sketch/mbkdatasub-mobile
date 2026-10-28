@@ -75,10 +75,10 @@ class _GetYourAppPageState extends State<GetYourAppPage> {
       }
     });
 
-    _fullNameController.addListener(() => _validateStep1(silent: true));
-    _whatsappController.addListener(() => _validateStep1(silent: true));
-    _emailController.addListener(() => _validateStep1(silent: true));
-    _appNameController.addListener(() => _validateStep1(silent: true));
+    _fullNameController.addListener(() => setState(() {}));
+    _whatsappController.addListener(() => setState(() {}));
+    _emailController.addListener(() => setState(() {}));
+    _appNameController.addListener(() => setState(() {}));
   }
 
   @override
@@ -94,7 +94,8 @@ class _GetYourAppPageState extends State<GetYourAppPage> {
   // Step 1 Validation
   bool _validateStep1({bool silent = false}) {
     final name = _fullNameController.text.trim();
-    final whatsapp = _whatsappController.text.trim().replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    final rawWhatsapp = _whatsappController.text.trim();
+    final cleanPhone = rawWhatsapp.replaceAll(RegExp(r'[^0-9]'), '');
     final email = _emailController.text.trim();
     final appName = _appNameController.text.trim();
 
@@ -109,12 +110,10 @@ class _GetYourAppPageState extends State<GetYourAppPage> {
       nameErr = 'Full Name must be at least 3 characters.';
     }
 
-    final phoneRegex = RegExp(r'^(?:\+?234|0)[789][01]\d{8}$');
-    final generalPhoneRegex = RegExp(r'^(?:\+?234|0)\d{10}$');
-    if (whatsapp.isEmpty) {
+    if (rawWhatsapp.isEmpty) {
       phoneErr = 'WhatsApp number is required.';
-    } else if (!phoneRegex.hasMatch(whatsapp) && !generalPhoneRegex.hasMatch(whatsapp)) {
-      phoneErr = 'Enter a valid number (e.g. 08012345678 or +2348012345678).';
+    } else if (cleanPhone.length < 10 || cleanPhone.length > 14) {
+      phoneErr = 'Enter a valid WhatsApp phone number (e.g. 08012345678).';
     }
 
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
@@ -664,23 +663,39 @@ class _GetYourAppPageState extends State<GetYourAppPage> {
 
           const SizedBox(height: 24),
 
-          // PAY NOW Button (Disabled until valid)
+          // PAY NOW Button (Always clickable to proceed or highlight errors)
           SizedBox(
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: isValid
-                  ? () {
-                      if (_validateStep1()) {
-                        _goToStep(1);
-                      }
-                    }
-                  : null,
+              onPressed: () {
+                final valid = _validateStep1(silent: false);
+                if (valid) {
+                  _goToStep(1);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text('Please correct the highlighted fields to proceed to payment.'),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: const Color(0xFFE11D48),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  );
+                }
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.primary,
-                disabledBackgroundColor: const Color(0xFFCBD5E1),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: isValid ? 4 : 0,
+                elevation: 4,
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,

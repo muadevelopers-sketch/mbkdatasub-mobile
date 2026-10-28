@@ -58,7 +58,6 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
         serviceDescription: '₦${amount.toStringAsFixed(0)} (3.5% wholesale discount)',
         amount: toPay,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.buyAlphaTopup(
             phone: phone,
             amount: amount,
@@ -66,6 +65,7 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             showModalBottomSheet(
@@ -111,7 +111,6 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
         serviceDescription: 'Smile ${_smileType.toUpperCase()} Recharge',
         amount: amount,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.buySmile(
             accountId: account,
             type: _smileType,
@@ -120,6 +119,7 @@ class _AlphaSmilePageState extends State<AlphaSmilePage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             showModalBottomSheet(

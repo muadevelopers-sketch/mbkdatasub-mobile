@@ -47,16 +47,18 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
     final walletBalance = appState.wallet.balance;
     final isInsufficient = walletBalance < widget.amount;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.secondaryBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
+    return PopScope(
+      canPop: !_isProcessing,
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.secondaryBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
           // Drag handle
           Container(
             width: 48,
@@ -227,7 +229,7 @@ class _PurchaseSummaryBottomSheetState extends State<PurchaseSummaryBottomSheet>
           ],
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildRow(String label, String value, FlutterFlowTheme theme) {

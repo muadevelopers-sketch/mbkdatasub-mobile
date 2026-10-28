@@ -92,7 +92,6 @@ class _ElectricityPageState extends State<ElectricityPage> {
         serviceDescription: 'Electricity Token (₦${amount.toStringAsFixed(0)})',
         amount: amount,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.payElectricity(
             disco: _selectedDisco,
             meterNumber: meter,
@@ -103,6 +102,7 @@ class _ElectricityPageState extends State<ElectricityPage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             final token = res.data?['token']?.toString() ?? res.data?['purchased_code']?.toString();

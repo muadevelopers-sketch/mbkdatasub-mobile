@@ -101,7 +101,6 @@ class _CablePageState extends State<CablePage> {
         serviceDescription: _selectedPackage!['name'],
         amount: price,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.renewCable(
             provider: _selectedProvider,
             smartcard: smartcard,
@@ -112,6 +111,7 @@ class _CablePageState extends State<CablePage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             showModalBottomSheet(

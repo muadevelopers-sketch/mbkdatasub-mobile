@@ -41,7 +41,6 @@ class _ExamPinPageState extends State<ExamPinPage> {
         serviceDescription: '$_quantity x $_selectedExam (₦${unitPrice.toStringAsFixed(0)} each)',
         amount: total,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.buyExamPin(
             examName: _selectedExam,
             quantity: _quantity,
@@ -49,6 +48,7 @@ class _ExamPinPageState extends State<ExamPinPage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
 

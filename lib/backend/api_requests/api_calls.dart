@@ -417,16 +417,26 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'network': network.toUpperCase(),
+        'amount': amount,
+        'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/airtime/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'network': network.toUpperCase(),
-          'amount': amount,
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/airtime'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -436,7 +446,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Transaction request timed out or connection error. Please retry.', statusCode: 0);
     }
   }
 
@@ -455,16 +465,26 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'network': network.toUpperCase(),
+        'planId': planId,
+        'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/data/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'network': network.toUpperCase(),
-          'planId': planId,
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/data'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -474,7 +494,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Transaction request timed out or connection error. Please retry.', statusCode: 0);
     }
   }
 
@@ -493,23 +513,37 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'provider': provider.toLowerCase(),
+        'smartcard': smartcard.trim(),
+        'smartcardNumber': smartcard.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/cable/validate'),
         headers: _headers(token),
-        body: jsonEncode({
-          'provider': provider.toLowerCase(),
-          'smartcardNumber': smartcard.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 12));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/cable/verify-card'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 12));
+      }
 
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        final name = body['data']?['customerName']?.toString() ?? 'VERIFIED CUSTOMER';
+        final name = body['data']?['customerName']?.toString() ??
+            body['customerName']?.toString() ??
+            body['name']?.toString() ??
+            'VERIFIED CUSTOMER';
         return ApiResult(success: true, message: 'Verified', data: name);
       }
       return ApiResult(success: false, message: body['message'] ?? 'Smartcard not found');
     } catch (e) {
-      return ApiResult(success: false, message: 'Verification network error.');
+      return ApiResult(success: false, message: 'Verification timed out or connection error.');
     }
   }
 
@@ -523,16 +557,29 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'provider': provider.toLowerCase(),
+        'packageId': packageId,
+        'packageName': packageName,
+        'smartcard': smartcard.trim(),
+        'smartcardNumber': smartcard.trim(),
+        'price': price,
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/cable/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'provider': provider.toLowerCase(),
-          'packageId': packageId,
-          'smartcardNumber': smartcard.trim(),
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/cable'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -542,7 +589,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Renewal timed out or connection error.', statusCode: 0);
     }
   }
 
@@ -555,24 +602,38 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'disco': disco.toLowerCase(),
+        'meterNumber': meterNumber.trim(),
+        'meter': meterNumber.trim(),
+        'meterType': meterType.toLowerCase(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/electricity/validate'),
         headers: _headers(token),
-        body: jsonEncode({
-          'disco': disco.toLowerCase(),
-          'meterNumber': meterNumber.trim(),
-          'meterType': meterType.toLowerCase(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 12));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/electricity/verify-meter'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 12));
+      }
 
       final body = jsonDecode(res.body);
       if (res.statusCode == 200 && body['success'] == true) {
-        final name = body['data']?['customerName']?.toString() ?? 'VERIFIED CUSTOMER';
+        final name = body['data']?['customerName']?.toString() ??
+            body['customerName']?.toString() ??
+            body['name']?.toString() ??
+            'VERIFIED CUSTOMER';
         return ApiResult(success: true, message: 'Verified', data: name);
       }
       return ApiResult(success: false, message: body['message'] ?? 'Meter verification failed');
     } catch (e) {
-      return ApiResult(success: false, message: 'Verification network error.');
+      return ApiResult(success: false, message: 'Verification timed out or connection error.');
     }
   }
 
@@ -586,18 +647,29 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'disco': disco.toLowerCase(),
+        'meterNumber': meterNumber.trim(),
+        'meter': meterNumber.trim(),
+        'meterType': meterType.toLowerCase(),
+        'amount': amount,
+        'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/electricity/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'disco': disco.toLowerCase(),
-          'meterNumber': meterNumber.trim(),
-          'meterType': meterType.toLowerCase(),
-          'amount': amount,
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/electricity'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -607,7 +679,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Payment timed out or connection error.', statusCode: 0);
     }
   }
 
@@ -620,15 +692,26 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'examName': examName.toUpperCase(),
+        'examType': examName.toUpperCase(),
+        'quantity': quantity,
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/exam/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'examType': examName.toUpperCase(),
-          'quantity': quantity,
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/exampin'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -638,7 +721,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Request timed out or network error. Please retry.', statusCode: 0);
     }
   }
 
@@ -651,15 +734,25 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
+        'amount': amount,
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/alpha/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'phone': phone.replaceAll(RegExp(r'[^0-9]'), ''),
-          'amount': amount,
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/alpha'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
@@ -669,7 +762,7 @@ class MbkApi {
         statusCode: res.statusCode,
       );
     } catch (e) {
-      return ApiResult(success: false, message: 'Network error.', statusCode: 0);
+      return ApiResult(success: false, message: 'Request timed out or network error. Please retry.', statusCode: 0);
     }
   }
 
@@ -681,21 +774,38 @@ class MbkApi {
   }) async {
     try {
       final token = await getToken();
-      final res = await http.post(
+      final payload = jsonEncode({
+        'accountId': accountId.trim(),
+        'type': type,
+        'amount': amount,
+        'pin': pin.trim(),
+      });
+
+      var res = await http.post(
         _buildUri('/services/smile/purchase'),
         headers: _headers(token),
-        body: jsonEncode({
-          'accountId': accountId.trim(),
-          'type': type,
-          'amount': amount,
-          'pin': pin.trim(),
-        }),
-      );
+        body: payload,
+      ).timeout(const Duration(seconds: 15));
+
+      if (res.statusCode == 404) {
+        res = await http.post(
+          _buildUri('/services/smile'),
+          headers: _headers(token),
+          body: payload,
+        ).timeout(const Duration(seconds: 15));
+      }
 
       final body = jsonDecode(res.body);
       return ApiResult(
         success: res.statusCode == 200 && body['success'] == true,
         message: body['message'] ?? 'Smile 4G topup processed.',
+        data: body,
+        statusCode: res.statusCode,
+      );
+    } catch (e) {
+      return ApiResult(success: false, message: 'Request timed out or network error. Please retry.', statusCode: 0);
+    }
+  }
         data: body,
         statusCode: res.statusCode,
       );

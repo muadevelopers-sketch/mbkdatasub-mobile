@@ -65,7 +65,6 @@ class _DataPageState extends State<DataPage> {
         serviceDescription: '${plan.name} (${plan.validity})',
         amount: price,
         onPinConfirmed: (pin) async {
-          Navigator.pop(context);
           final res = await MbkApi.buyData(
             network: plan.network,
             phone: phone,
@@ -74,6 +73,7 @@ class _DataPageState extends State<DataPage> {
           );
 
           if (mounted) {
+            Navigator.pop(context); // Close summary sheet after processing completes
             await appState.refreshWallet();
             await appState.refreshTransactions();
             showModalBottomSheet(
