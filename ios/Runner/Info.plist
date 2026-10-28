@@ -24,6 +24,13 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>whatsapp</string>
+	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MBKDATASUB requires access to your photo library to select and upload payment receipts.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>MBKDATASUB uses Face ID / Biometrics to quickly and securely verify your identity for payment confirmation.</string>
 	<key>UILaunchStoryboardName</key>
