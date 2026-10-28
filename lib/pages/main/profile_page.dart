@@ -8,6 +8,7 @@ import '../settings/change_pin_page.dart';
 import '../settings/change_password_page.dart';
 import '../settings/live_pricing_page.dart';
 import '../settings/support_page.dart';
+import '../services/get_your_app_page.dart';
 import 'main_nav_shell.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -200,6 +201,21 @@ class ProfilePage extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
+                    _buildSettingsTile(
+                      icon: Icons.rocket_launch_rounded,
+                      iconColor: theme.primaryAccent,
+                      iconBg: const Color(0xFFEEF2FF),
+                      title: 'GET YOUR APP',
+                      subtitle: 'Get your own custom VTU website + mobile app',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const GetYourAppPage()),
+                        );
+                      },
+                      theme: theme,
+                    ),
+                    const Divider(height: 1, indent: 64, color: Color(0xFFF1F5F9)),
                     _buildSettingsTile(
                       icon: Icons.person_add_alt_1_outlined,
                       iconColor: theme.success,
