@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   TextInput,
   TouchableOpacity,
@@ -13,6 +12,7 @@ import {
   Linking,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import * as Clipboard from 'expo-clipboard';
 import {
   Search,
@@ -419,6 +419,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   header: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
     marginBottom: 14,
@@ -435,13 +438,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   searchWrapper: {
+    maxWidth: 640,
+    width: '92%',
+    alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: '#334155',
-    marginHorizontal: 20,
     paddingHorizontal: 14,
     height: 46,
     marginBottom: 12,
@@ -453,6 +458,9 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
   },
   tabsContainer: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     marginBottom: 14,
   },
   tabsScroll: {
@@ -480,6 +488,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   listContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingBottom: 40,
   },

@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   TextInput,
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
@@ -430,6 +430,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,

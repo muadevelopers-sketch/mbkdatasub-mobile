@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import { LinearGradient } from 'expo-linear-gradient';
 import { ShieldCheck, Delete, ScanFace, Fingerprint, CheckCircle2 } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';

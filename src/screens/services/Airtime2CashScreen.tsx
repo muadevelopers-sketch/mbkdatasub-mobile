@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   TextInput,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import { useFocusEffect } from '@react-navigation/native';
 import { apiClient } from '../../api/client';
 import {
@@ -273,6 +273,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,

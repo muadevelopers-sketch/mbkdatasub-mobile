@@ -6,10 +6,10 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowRight, ShieldCheck, Zap, ScanFace, Fingerprint } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -163,6 +163,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 36,

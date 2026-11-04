@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
@@ -310,7 +310,7 @@ export const ElectricityScreen = ({ navigation }: any) => {
             <Zap size={20} color="#F59E0B" />
             <TextInput
               style={[styles.meterInput, { color: colors.text }]}
-              placeholder="e.g. 45019283746 (11-digit Meter Number)"
+              placeholder="11 DIGIT METER NUMBER"
               placeholderTextColor={colors.textMuted}
               value={meterNumber}
               onChangeText={(t) => {
@@ -445,6 +445,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,

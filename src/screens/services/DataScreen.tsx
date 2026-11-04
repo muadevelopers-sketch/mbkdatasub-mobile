@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   TextInput,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import {
@@ -308,7 +308,7 @@ export const DataScreen = ({ navigation }: any) => {
             <Smartphone size={20} color={colors.textMuted} />
             <TextInput
               style={[styles.phoneInput, { color: colors.text }]}
-              placeholder="0803 123 4567 (Auto-detects network)"
+              placeholder="0803 123 4567"
               placeholderTextColor={colors.textMuted}
               value={phone}
               onChangeText={handlePhoneChange}
@@ -465,6 +465,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,

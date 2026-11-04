@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   RefreshControl,
   TouchableOpacity,
@@ -12,6 +11,7 @@ import {
   Modal,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';;
 import { useFocusEffect } from '@react-navigation/native';
 import {
   Wifi,
@@ -409,6 +409,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   scrollContent: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
     paddingBottom: 40,
   },
   sectionSpacing: {
