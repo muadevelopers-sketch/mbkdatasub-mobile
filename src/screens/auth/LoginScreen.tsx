@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { triggerHaptic } from '../../utils/haptics';
 import { getStoredBiometricPin } from '../../utils/biometrics';
+import { apiClient } from '../../api/client';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { login, loginWithPin, loginWithBiometrics, biometricInfo } = useAuth();
@@ -42,9 +43,14 @@ export const LoginScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [supportPhone, setSupportPhone] = useState('2349047050681');
 
   useEffect(() => {
     checkStoredBiometrics();
+    apiClient.get('/admin/branding').then((res) => {
+      const p = res.data?.branding?.supportWhatsapp || res.data?.branding?.supportPhone || res.data?.supportWhatsapp || res.data?.supportPhone;
+      if (p) setSupportPhone(p.replace(/[^0-9]/g, ''));
+    }).catch(() => {});
   }, []);
 
   const checkStoredBiometrics = async () => {
@@ -115,7 +121,7 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const handleSupport = () => {
     triggerHaptic('light');
-    Linking.openURL('https://wa.me/2347063462998?text=Hello%20MBKDATASUB%20Support,%20I%20need%20assistance%20logging%20in.');
+    Linking.openURL(`https://wa.me/${supportPhone}?text=Hello%20MBKDATASUB%20Support,%20I%20need%20assistance%20logging%20in.`);
   };
 
   return (

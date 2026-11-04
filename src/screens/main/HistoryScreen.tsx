@@ -34,10 +34,19 @@ import { useAuth, MobileTransaction } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { formatNaira, formatDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
+import { apiClient } from '../../api/client';
 
 export const HistoryScreen = () => {
   const { transactions, refreshData } = useAuth();
   const { colors, isDark } = useTheme();
+  const [supportPhone, setSupportPhone] = useState('2349047050681');
+
+  useEffect(() => {
+    apiClient.get('/admin/branding').then((res) => {
+      const p = res.data?.branding?.supportWhatsapp || res.data?.branding?.supportPhone || res.data?.supportWhatsapp || res.data?.supportPhone;
+      if (p) setSupportPhone(p.replace(/[^0-9]/g, ''));
+    }).catch(() => {});
+  }, []);
   const [filterType, setFilterType] = useState<'all' | 'data' | 'airtime' | 'cable' | 'power' | 'fund'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTx, setSelectedTx] = useState<MobileTransaction | null>(null);
@@ -104,7 +113,7 @@ export const HistoryScreen = () => {
     const msg = encodeURIComponent(
       `Hello MBKDATASUB Support, I need help with transaction ${tx.reference} for ${tx.title} of ₦${tx.amount}.`
     );
-    Linking.openURL(`https://wa.me/2347063462998?text=${msg}`);
+    Linking.openURL(`https://wa.me/${supportPhone}?text=${msg}`);
   };
 
   const renderIcon = (tx: MobileTransaction) => {
