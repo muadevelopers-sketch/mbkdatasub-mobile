@@ -154,23 +154,11 @@ export const ElectricityScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // Fallback for simulation
-        await refreshData();
-        const simulatedToken = `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-        setGeneratedToken(simulatedToken);
-        setLastTxData({
-          amount,
-          recipient: `${meterNumber} (${customerName || selectedDisco.toUpperCase()})`,
-          reference: `ELE-${Date.now().toString().slice(-8)}`,
-          title: `${selectedDisco.toUpperCase()} Electricity Bill`,
-          balanceAfter: Math.max(0, wallet.balance - amount),
-          token: simulatedToken,
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Payment Failed', msg);
       }
     }
   };

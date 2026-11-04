@@ -168,28 +168,11 @@ export const ExamPinScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // Fallback for simulation
-        await refreshData();
-        const pins = [
-          {
-            pin: `PIN-${Date.now().toString().slice(-8)}`,
-            serial: `SN-${Date.now().toString().slice(-6)}`,
-          },
-        ];
-        setGeneratedPins(pins);
-        setLastTxData({
-          amount: totalPrice,
-          recipient: `${recipientPhone.trim() || user?.phone || 'Candidate'} (Qty: ${quantity})`,
-          reference: `EXM-${Date.now().toString().slice(-8)}`,
-          title: `${selectedExam.name} (x${quantity})`,
-          balanceAfter: Math.max(0, wallet.balance - totalPrice),
-          pins,
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Purchase Failed', msg);
       }
     }
   };

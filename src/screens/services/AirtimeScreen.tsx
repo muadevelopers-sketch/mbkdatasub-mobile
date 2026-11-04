@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
@@ -56,10 +57,35 @@ export const AirtimeScreen = ({ navigation }: any) => {
   const [insufficientModalVisible, setInsufficientModalVisible] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [lastTxData, setLastTxData] = useState<any>(null);
+  const [liveDiscountRate, setLiveDiscountRate] = useState<number>(2);
+  const [isServiceActive, setIsServiceActive] = useState<boolean>(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLiveConfig();
+    }, [])
+  );
+
+  const fetchLiveConfig = async () => {
+    try {
+      const res = await apiClient.get('/services/configs');
+      if (res.data?.success && Array.isArray(res.data.services)) {
+        const airtime = res.data.services.find((s: any) => s.serviceCode === 'airtime');
+        if (airtime) {
+          setIsServiceActive(airtime.isActive !== false);
+          if (typeof airtime.discountRate === 'number' && airtime.discountRate >= 0) {
+            setLiveDiscountRate(airtime.discountRate);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Fetch Airtime Config Notice]', e);
+    }
+  };
 
   const amount = parseInt(amountStr, 10) || 0;
   const currentNet = NETWORKS.find((n) => n.id === selectedNetwork) || NETWORKS[0];
-  const discountRate = currentNet.discount;
+  const discountRate = liveDiscountRate;
   const discountAmount = Math.round((amount * discountRate) / 100);
   const finalDebit = Math.max(0, amount - discountAmount);
 
@@ -86,6 +112,11 @@ export const AirtimeScreen = ({ navigation }: any) => {
   };
 
   const handleInitPurchase = () => {
+    if (!isServiceActive) {
+      triggerHaptic('error');
+      Alert.alert('Service Offline', 'Airtime recharge service is currently under maintenance or disabled by administrator.');
+      return;
+    }
     if (!phone || phone.length < 11) {
       triggerHaptic('error');
       Alert.alert('Invalid Phone', 'Please enter a valid 11-digit phone number.');
@@ -145,20 +176,11 @@ export const AirtimeScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // Fallback for simulation
-        await refreshData();
-        setLastTxData({
-          amount,
-          recipient: `${phone} (${selectedNetwork})`,
-          reference: `AIR-${Date.now().toString().slice(-8)}`,
-          title: `${selectedNetwork} Airtime VTU`,
-          balanceAfter: Math.max(0, wallet.balance - finalDebit),
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Recharge Failed', msg);
       }
     }
   };

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth, MobileTransaction } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { apiClient } from '../../api/client';
 import { Header } from '../../components/Header';
 import { WalletCard } from '../../components/WalletCard';
 import { QuickActionsGrid } from '../../components/QuickActionsGrid';
@@ -35,12 +36,25 @@ export const HomeScreen = ({ navigation }: any) => {
   const { user, wallet, transactions, refreshData } = useAuth();
   const { colors, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [supportPhone, setSupportPhone] = useState('2349047050681');
+
+  React.useEffect(() => {
+    apiClient.get('/admin/bank').then((res) => {
+      const p = res.data?.bank?.whatsappNotificationPhone || res.data?.data?.whatsappNotificationPhone;
+      if (p) setSupportPhone(p.replace(/[^0-9]/g, ''));
+    }).catch(() => {});
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
     triggerHaptic('light');
     await refreshData();
     setRefreshing(false);
+  };
+
+  const handleSupport = () => {
+    triggerHaptic('light');
+    Linking.openURL(`https://wa.me/${supportPhone}?text=Hello%20MBKDATASUB%20Support,%20I%20have%20an%20inquiry.`);
   };
 
   const handleServiceSelect = (serviceId: string) => {
@@ -85,10 +99,7 @@ export const HomeScreen = ({ navigation }: any) => {
     navigation.navigate(targetRoute);
   };
 
-  const handleSupport = () => {
-    triggerHaptic('light');
-    Linking.openURL('https://wa.me/2347063462998?text=Hello%20MBKDATASUB%20Support,%20I%20have%20an%20inquiry.');
-  };
+
 
   const renderTransactionIcon = (tx: MobileTransaction) => {
     const code = (tx.serviceCode || tx.title || '').toLowerCase();

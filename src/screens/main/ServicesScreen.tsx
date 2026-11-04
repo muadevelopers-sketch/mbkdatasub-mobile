@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   StatusBar,
   TextInput,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Search,
   Wifi,
@@ -23,6 +25,7 @@ import {
   Flame,
 } from 'lucide-react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { apiClient } from '../../api/client';
 import { triggerHaptic } from '../../utils/haptics';
 
 interface ServiceItem {
@@ -40,6 +43,43 @@ interface ServiceItem {
 export const ServicesScreen = ({ navigation }: any) => {
   const { colors, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
+  const [configs, setConfigs] = useState<Record<string, { isActive: boolean; discountRate: number }>>({});
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchConfigs();
+    }, [])
+  );
+
+  const fetchConfigs = async () => {
+    try {
+      const res = await apiClient.get('/services/configs');
+      if (res.data?.success && Array.isArray(res.data.services)) {
+        const map: Record<string, { isActive: boolean; discountRate: number }> = {};
+        for (const s of res.data.services) {
+          map[s.serviceCode] = {
+            isActive: s.isActive !== false,
+            discountRate: Number(s.discountRate || 0),
+          };
+        }
+        setConfigs(map);
+      }
+    } catch (e) {
+      console.warn('[Fetch Services Config Error]', e);
+    }
+  };
+
+  const getServiceStatus = (code: string) => {
+    return configs[code] || { isActive: true, discountRate: 0 };
+  };
+
+  const airtimeStatus = getServiceStatus('airtime');
+  const dataStatus = getServiceStatus('data');
+  const cableStatus = getServiceStatus('cable_tv');
+  const eleStatus = getServiceStatus('electricity');
+  const examStatus = getServiceStatus('exam_pins');
+  const a2cStatus = getServiceStatus('airtime2cash');
+  const alphaStatus = getServiceStatus('alpha');
 
   const services: ServiceItem[] = [
     {
@@ -49,18 +89,18 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: Wifi,
       iconBg: 'rgba(56, 189, 248, 0.15)',
       iconColor: '#38BDF8',
-      tag: 'INSTANT',
+      tag: !dataStatus.isActive ? 'OFFLINE' : 'INSTANT',
       route: 'Data',
       category: 'telecom',
     },
     {
       id: 'airtime',
       title: 'Airtime VTU Recharge',
-      description: 'Instant recharge with up to 2% cash discount on all networks.',
+      description: 'Instant recharge with cash discount on all networks.',
       icon: Smartphone,
       iconBg: 'rgba(16, 185, 129, 0.15)',
       iconColor: '#10B981',
-      tag: '2% OFF',
+      tag: !airtimeStatus.isActive ? 'OFFLINE' : (airtimeStatus.discountRate > 0 ? `${airtimeStatus.discountRate}% OFF` : 'INSTANT'),
       route: 'Airtime',
       category: 'telecom',
     },
@@ -71,7 +111,7 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: Repeat,
       iconBg: 'rgba(245, 158, 11, 0.15)',
       iconColor: '#F59E0B',
-      tag: '82% RATE',
+      tag: !a2cStatus.isActive ? 'OFFLINE' : 'FAST PAYOUT',
       route: 'Airtime2Cash',
       category: 'telecom',
     },
@@ -82,6 +122,7 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: Tv,
       iconBg: 'rgba(168, 85, 247, 0.15)',
       iconColor: '#A855F7',
+      tag: !cableStatus.isActive ? 'OFFLINE' : undefined,
       route: 'Cable',
       category: 'bills',
     },
@@ -92,6 +133,7 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: Zap,
       iconBg: 'rgba(234, 179, 8, 0.15)',
       iconColor: '#EAB308',
+      tag: !eleStatus.isActive ? 'OFFLINE' : undefined,
       route: 'Electricity',
       category: 'bills',
     },
@@ -102,6 +144,7 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: GraduationCap,
       iconBg: 'rgba(236, 72, 153, 0.15)',
       iconColor: '#EC4899',
+      tag: !examStatus.isActive ? 'OFFLINE' : undefined,
       route: 'ExamPin',
       category: 'education',
     },
@@ -112,6 +155,7 @@ export const ServicesScreen = ({ navigation }: any) => {
       icon: Radio,
       iconBg: 'rgba(99, 102, 241, 0.15)',
       iconColor: '#6366F1',
+      tag: !alphaStatus.isActive ? 'OFFLINE' : undefined,
       route: 'Smile',
       category: 'telecom',
     },
@@ -127,18 +171,24 @@ export const ServicesScreen = ({ navigation }: any) => {
   const billsServices = filtered.filter((s) => s.category === 'bills');
   const educationServices = filtered.filter((s) => s.category === 'education');
 
-  const handlePress = (route: string) => {
+  const handlePress = (item: ServiceItem) => {
+    if (item.tag === 'OFFLINE') {
+      triggerHaptic('error');
+      Alert.alert('Service Offline', `${item.title} is currently under maintenance or disabled by administrator.`);
+      return;
+    }
     triggerHaptic('selection');
-    navigation.navigate(route);
+    navigation.navigate(item.route);
   };
 
   const renderServiceCard = (item: ServiceItem) => {
     const IconComp = item.icon;
+    const isOffline = item.tag === 'OFFLINE';
     return (
       <TouchableOpacity
         key={item.id}
-        style={[styles.serviceCard, { borderBottomColor: colors.cardBorder }]}
-        onPress={() => handlePress(item.route)}
+        style={[styles.serviceCard, { borderBottomColor: colors.cardBorder }, isOffline && { opacity: 0.6 }]}
+        onPress={() => handlePress(item)}
         activeOpacity={0.7}
       >
         <View style={[styles.iconBox, { backgroundColor: item.iconBg }]}>

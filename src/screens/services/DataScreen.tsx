@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
@@ -94,19 +95,33 @@ export const DataScreen = ({ navigation }: any) => {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [lastTxData, setLastTxData] = useState<any>(null);
 
-  useEffect(() => {
-    fetchLivePlans();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchLivePlans();
+    }, [])
+  );
 
   const fetchLivePlans = async () => {
     setLoadingPlans(true);
     try {
-      const res = await apiClient.get('/admin/plans');
-      if (res.data?.success && Array.isArray(res.data.plans) && res.data.plans.length > 0) {
-        setPlans(res.data.plans);
+      // Single source of truth: fetch live admin/backend plans
+      const res = await apiClient.get('/services/data/plans');
+      const incoming = res.data?.plans || res.data?.data;
+      if (res.data?.success && Array.isArray(incoming) && incoming.length > 0) {
+        const mapped: Plan[] = incoming.map((p: any) => ({
+          id: String(p.id),
+          planId: String(p.planId || p.id),
+          name: p.name,
+          network: p.network,
+          type: (p.type || 'SME').toUpperCase(),
+          price: Number(p.userPrice ?? p.price ?? 0),
+          validity: p.validity || '30 Days',
+          isActive: p.isActive !== false,
+        }));
+        setPlans(mapped);
       }
     } catch {
-      // fallback to DEFAULT_PLANS
+      // Keep existing plans in state
     } finally {
       setLoadingPlans(false);
     }
@@ -139,7 +154,8 @@ export const DataScreen = ({ navigation }: any) => {
   const networkPlans = plans.filter((p) => {
     const netMatch = (p.network || '').toLowerCase() === selectedNetwork.toLowerCase();
     if (!netMatch) return false;
-    return (p.type || '').toUpperCase() === planType;
+    const planTypeUpper = (p.type || '').toUpperCase();
+    return planTypeUpper === planType || planTypeUpper.includes(planType);
   });
 
   const handleCheckoutInit = () => {
@@ -203,20 +219,11 @@ export const DataScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // Fallback for simulation
-        await refreshData();
-        setLastTxData({
-          amount: selectedPlan.price,
-          recipient: `${phone} (${selectedNetwork})`,
-          reference: `DAT-${Date.now().toString().slice(-8)}`,
-          title: `${selectedNetwork} ${selectedPlan.name}`,
-          balanceAfter: Math.max(0, wallet.balance - selectedPlan.price),
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Purchase Failed', msg);
       }
     }
   };
@@ -347,41 +354,49 @@ export const DataScreen = ({ navigation }: any) => {
           <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 20 }} />
         ) : (
           <View style={styles.plansList}>
-            {networkPlans.map((plan) => {
-              const isSelected = selectedPlan?.id === plan.id;
-              return (
-                <TouchableOpacity
-                  key={plan.id}
-                  style={[
-                    styles.planCard,
-                    { backgroundColor: colors.card, borderColor: colors.cardBorder },
-                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
-                  ]}
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    setSelectedPlan(plan);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.planInfo}>
-                    <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
-                    <Text style={[styles.planValidity, { color: colors.textSecondary }]}>
-                      {plan.validity || '30 Days Validity'} • {plan.type || 'SME'}
-                    </Text>
-                  </View>
-                  <View style={styles.planPriceCol}>
-                    <Text style={[styles.planPrice, { color: colors.text }, isSelected && { color: colors.primary }]}>
-                      {formatNaira(plan.price)}
-                    </Text>
-                    {isSelected && (
-                      <View style={[styles.planCheck, { backgroundColor: colors.primary }]}>
-                        <Check size={14} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+            {networkPlans.length === 0 ? (
+              <View style={[styles.planCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, justifyContent: 'center', alignItems: 'center', paddingVertical: 28 }]}>
+                <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '500', textAlign: 'center' }}>
+                  No {planType} plans currently listed for {selectedNetwork}.
+                </Text>
+              </View>
+            ) : (
+              networkPlans.map((plan) => {
+                const isSelected = selectedPlan?.id === plan.id;
+                return (
+                  <TouchableOpacity
+                    key={plan.id}
+                    style={[
+                      styles.planCard,
+                      { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                      isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryBg },
+                    ]}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      setSelectedPlan(plan);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.planInfo}>
+                      <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
+                      <Text style={[styles.planValidity, { color: colors.textSecondary }]}>
+                        {plan.validity || '30 Days Validity'} • {plan.type || 'SME'}
+                      </Text>
+                    </View>
+                    <View style={styles.planPriceCol}>
+                      <Text style={[styles.planPrice, { color: colors.text }, isSelected && { color: colors.primary }]}>
+                        {formatNaira(plan.price)}
+                      </Text>
+                      {isSelected && (
+                        <View style={[styles.planCheck, { backgroundColor: colors.primary }]}>
+                          <Check size={14} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         )}
 

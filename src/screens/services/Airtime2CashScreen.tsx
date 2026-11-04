@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { apiClient } from '../../api/client';
 import {
   ArrowLeft,
   Repeat,
@@ -47,9 +49,46 @@ export const Airtime2CashScreen = ({ navigation }: any) => {
   const [selectedNetwork, setSelectedNetwork] = useState('MTN');
   const [senderPhone, setSenderPhone] = useState('');
   const [amountStr, setAmountStr] = useState('5000');
+  const [liveNetworks, setLiveNetworks] = useState(NETWORKS);
+  const [adminPhone, setAdminPhone] = useState('2349047050681');
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLiveA2CRates();
+    }, [])
+  );
+
+  const fetchLiveA2CRates = async () => {
+    try {
+      const [rateRes, bankRes] = await Promise.all([
+        apiClient.get('/services/airtime2cash/rates').catch(() => null),
+        apiClient.get('/admin/bank').catch(() => null),
+      ]);
+
+      if (rateRes?.data?.success && Array.isArray(rateRes.data.settings)) {
+        const settings = rateRes.data.settings;
+        setLiveNetworks((prev) =>
+          prev.map((n) => {
+            const found = settings.find((s: any) => s.network.toUpperCase() === n.id.toUpperCase());
+            if (found && typeof found.rate === 'number') {
+              return { ...n, rate: found.rate, receiverPhone: found.receiverPhone || n.receiverPhone };
+            }
+            return n;
+          })
+        );
+      }
+
+      const rawPhone = bankRes?.data?.bank?.whatsappNotificationPhone || bankRes?.data?.data?.whatsappNotificationPhone;
+      if (rawPhone) {
+        setAdminPhone(rawPhone.replace(/[^0-9]/g, ''));
+      }
+    } catch (e) {
+      console.warn('[Fetch A2C Rates Error]', e);
+    }
+  };
 
   const amount = parseInt(amountStr, 10) || 0;
-  const currentNet = NETWORKS.find((n) => n.id === selectedNetwork) || NETWORKS[0];
+  const currentNet = liveNetworks.find((n) => n.id === selectedNetwork) || liveNetworks[0];
   const cashToReceive = Math.round((amount * currentNet.rate) / 100);
 
   const handleStartConversion = () => {
@@ -68,7 +107,7 @@ export const Airtime2CashScreen = ({ navigation }: any) => {
     const msg = encodeURIComponent(
       `Hello MBKDATASUB Admin, I want to convert ₦${amount.toLocaleString()} ${selectedNetwork} airtime to cash (Receiving ₦${cashToReceive.toLocaleString()} at ${currentNet.rate}%).\nSender Phone: ${senderPhone}\nAccount Name: ${user?.fullName || 'Customer'}`
     );
-    Linking.openURL(`https://wa.me/2347063462998?text=${msg}`);
+    Linking.openURL(`https://wa.me/${adminPhone}?text=${msg}`);
   };
 
   return (

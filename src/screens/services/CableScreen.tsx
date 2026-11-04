@@ -165,20 +165,11 @@ export const CableScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // Fallback for simulation
-        await refreshData();
-        setLastTxData({
-          amount: selectedPkg.price,
-          recipient: `${smartcard} (${customerName || provider.toUpperCase()})`,
-          reference: `CAB-${Date.now().toString().slice(-8)}`,
-          title: `${provider.toUpperCase()} ${selectedPkg.name}`,
-          balanceAfter: Math.max(0, wallet.balance - selectedPkg.price),
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Subscription Failed', msg);
       }
     }
   };

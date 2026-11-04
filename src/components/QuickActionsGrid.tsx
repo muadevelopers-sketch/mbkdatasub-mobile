@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import {
   Wifi,
   Smartphone,
@@ -11,6 +11,7 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { apiClient } from '../api/client';
 import { triggerHaptic } from '../utils/haptics';
 
 interface QuickActionsGridProps {
@@ -19,8 +20,47 @@ interface QuickActionsGridProps {
 }
 
 export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({ onActionPress, onSelectService }) => {
-  const handlePress = onSelectService || onActionPress || (() => {});
+  const onSelect = onSelectService || onActionPress || (() => {});
   const { colors, isDark } = useTheme();
+  const [disabledServices, setDisabledServices] = useState<string[]>([]);
+  const [airtimeDiscount, setAirtimeDiscount] = useState<number>(2);
+
+  useEffect(() => {
+    apiClient.get('/services/configs').then((res) => {
+      if (res.data?.success && Array.isArray(res.data.services)) {
+        const disabled = res.data.services
+          .filter((s: any) => s.isActive === false || s.isActive === 0)
+          .map((s: any) => s.serviceCode);
+        setDisabledServices(disabled);
+
+        const airtime = res.data.services.find((s: any) => s.serviceCode === 'airtime');
+        if (airtime && typeof airtime.discountRate === 'number') {
+          setAirtimeDiscount(airtime.discountRate);
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handlePress = (routeOrId: string) => {
+    const s = (routeOrId || '').toLowerCase();
+    const serviceCodeMap: Record<string, string> = {
+      data: 'data',
+      airtime: 'airtime',
+      cable: 'cable_tv',
+      electricity: 'electricity',
+      exampin: 'exam_pins',
+      exam: 'exam_pins',
+      smile: 'alpha',
+      airtime2cash: 'airtime2cash',
+    };
+    const mappedCode = serviceCodeMap[s];
+    if (mappedCode && disabledServices.includes(mappedCode)) {
+      triggerHaptic('error');
+      Alert.alert('Service Offline', 'This service is currently under maintenance or disabled by administrator.');
+      return;
+    }
+    onSelect(routeOrId);
+  };
 
   const actions = [
     {
@@ -40,7 +80,7 @@ export const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({ onActionPres
       icon: Smartphone,
       bgColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
       iconColor: isDark ? '#FB923C' : '#EA580C',
-      badge: 'Cashback',
+      badge: airtimeDiscount > 0 ? `${airtimeDiscount}% OFF` : 'Instant',
       badgeBg: isDark ? 'rgba(234, 88, 12, 0.3)' : '#FFEDD5',
       badgeColor: isDark ? '#FDBA74' : '#9A3412',
       route: 'Airtime',

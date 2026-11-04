@@ -28,6 +28,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { apiClient } from '../../api/client';
 import { formatNaira } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 
@@ -40,7 +41,15 @@ export const FundWalletScreen = ({ navigation }: any) => {
   const [checkingBalance, setCheckingBalance] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [newlyCredited, setNewlyCredited] = useState<number | null>(null);
+  const [adminPhone, setAdminPhone] = useState('2349047050681');
   const lastBalanceRef = useRef(wallet.balance);
+
+  useEffect(() => {
+    apiClient.get('/admin/bank').then((res) => {
+      const p = res.data?.bank?.whatsappNotificationPhone || res.data?.data?.whatsappNotificationPhone;
+      if (p) setAdminPhone(p.replace(/[^0-9]/g, ''));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     lastBalanceRef.current = wallet.balance;
@@ -126,7 +135,7 @@ export const FundWalletScreen = ({ navigation }: any) => {
     const msg = encodeURIComponent(
       `Hello MBKDATASUB Admin, I just made a transfer to fund my wallet. My registered phone number is ${user?.phone || 'N/A'}.`
     );
-    Linking.openURL(`https://wa.me/2347063462998?text=${msg}`);
+    Linking.openURL(`https://wa.me/${adminPhone}?text=${msg}`);
   };
 
   return (

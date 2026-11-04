@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Sparkles, ArrowRight, Zap, RefreshCw } from 'lucide-react-native';
+import { apiClient } from '../api/client';
 import { triggerHaptic } from '../utils/haptics';
 
 interface HomeBannerCarouselProps {
@@ -21,43 +22,72 @@ interface HomeBannerCarouselProps {
 const { width } = Dimensions.get('window');
 const BANNER_WIDTH = width - 40;
 
+const BASE_BANNERS = [
+  {
+    id: 'official-welcome',
+    type: 'image',
+    image: require('../../assets/banner.png'),
+    title: 'Welcome to MBK DATASUB',
+    subtitle: 'Nigeria’s #1 Automated Telecom & Data Topup Gateway',
+    tag: 'OFFICIAL',
+    route: 'Data',
+    cta: 'Buy Data Now',
+    gradient: ['#0A192F', '#002B5B', '#1A365D'],
+  },
+  {
+    id: 'data-bonanza',
+    type: 'promo',
+    title: 'Instant Data Bundles',
+    subtitle: 'Automated 24/7 delivery on MTN, Airtel, Glo & 9mobile',
+    tag: 'FAST DISPATCH',
+    route: 'Data',
+    cta: 'Get Bundle',
+    gradient: ['#1E1B4B', '#312E81', '#4338CA'],
+  },
+  {
+    id: 'airtime2cash',
+    type: 'promo',
+    title: 'Airtime to Cash',
+    subtitle: 'Convert excess airtime directly into instant liquid cash',
+    tag: 'FAST PAYOUT',
+    route: 'Airtime2Cash',
+    cta: 'Convert Now',
+    gradient: ['#78350F', '#92400E', '#B45309'],
+  },
+];
+
 export const HomeBannerCarousel: React.FC<HomeBannerCarouselProps> = ({ onBannerPress }) => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [banners, setBanners] = useState(BASE_BANNERS);
   const scrollRef = useRef<ScrollView>(null);
 
-  const banners = [
-    {
-      id: 'official-welcome',
-      type: 'image',
-      image: require('../../assets/banner.png'),
-      title: 'Welcome to MBK DATASUB',
-      subtitle: 'Nigeria’s #1 Automated Telecom & Data Topup Gateway',
-      tag: 'OFFICIAL',
-      route: 'Data',
-      cta: 'Buy Data Now',
-      gradient: ['#0A192F', '#002B5B', '#1A365D'],
-    },
-    {
-      id: 'data-bonanza',
-      type: 'promo',
-      title: '1GB MTN SME @ ₦270',
-      subtitle: 'Instant automated dispatch for MTN, Airtel, Glo & 9mobile 24/7',
-      tag: 'HOT DEAL',
-      route: 'Data',
-      cta: 'Get Bundle',
-      gradient: ['#1E1B4B', '#312E81', '#4338CA'],
-    },
-    {
-      id: 'airtime2cash',
-      type: 'promo',
-      title: 'Airtime to Cash (82%)',
-      subtitle: 'Convert excess MTN, Airtel & Glo airtime to instant bank cash',
-      tag: 'FAST PAYOUT',
-      route: 'Airtime2Cash',
-      cta: 'Convert Now',
-      gradient: ['#78350F', '#92400E', '#B45309'],
-    },
-  ];
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
+    try {
+      const res = await apiClient.get('/services/announcements');
+      if (res.data?.success && Array.isArray(res.data.announcements) && res.data.announcements.length > 0) {
+        const activeAnnouncements = res.data.announcements.filter((a: any) => a.isActive !== 0 && a.isActive !== false);
+        if (activeAnnouncements.length > 0) {
+          const dynamicBanners = activeAnnouncements.map((a: any, idx: number) => ({
+            id: `ann-${a.id || idx}`,
+            type: 'promo',
+            title: a.title,
+            subtitle: a.message,
+            tag: 'NOTICE',
+            route: 'Data',
+            cta: 'View More',
+            gradient: ['#065F46', '#047857', '#059669'],
+          }));
+          setBanners([...dynamicBanners, ...BASE_BANNERS]);
+        }
+      }
+    } catch (e) {
+      console.warn('[Fetch Carousel Announcements Notice]', e);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
