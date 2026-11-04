@@ -132,20 +132,11 @@ export const SmileScreen = ({ navigation }: any) => {
       setIsSubmitting(false);
       setIsPinModalVisible(false);
       triggerHaptic('error');
-      const msg = err.response?.data?.message || err.message || '';
+      const msg = err.response?.data?.message || err.message || 'Transaction could not be completed.';
       if (msg.toLowerCase().includes('balance')) {
         setInsufficientModalVisible(true);
       } else {
-        // If endpoint is simulated
-        await refreshData();
-        setLastTxData({
-          amount: currentPrice,
-          recipient: `${accountId.trim()} (${provider.toUpperCase()})`,
-          reference: `SML-${Date.now().toString().slice(-8)}`,
-          title: serviceType === 'data' ? `${provider.toUpperCase()} ${selectedPlan.name}` : `${provider.toUpperCase()} Voice Recharge`,
-          balanceAfter: Math.max(0, wallet.balance - currentPrice),
-        });
-        setSuccessModalVisible(true);
+        Alert.alert('Purchase Failed', msg);
       }
     }
   };
