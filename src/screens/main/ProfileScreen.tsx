@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Share,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Clipboard from 'expo-clipboard';
 import {
   User,
@@ -34,9 +35,12 @@ import {
   RefreshCw,
   Sliders,
   CheckCircle2,
+  Mail,
+  Phone,
 } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { apiClient } from '../../api/client';
 import { triggerHaptic } from '../../utils/haptics';
 import { promptBiometricAuth, enableMobileBiometrics } from '../../utils/biometrics';
 
@@ -83,6 +87,37 @@ export const ProfileScreen = ({ navigation }: any) => {
     }
   };
 
+  const [supportPhone, setSupportPhone] = useState('2349047050681');
+  const [supportEmail, setSupportEmail] = useState('support@mbkdatasub.com.ng');
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLiveBrandingAndContact();
+    }, [])
+  );
+
+  const fetchLiveBrandingAndContact = async () => {
+    try {
+      const [brandRes, bankRes] = await Promise.all([
+        apiClient.get('/admin/branding').catch(() => null),
+        apiClient.get('/admin/bank').catch(() => null),
+      ]);
+      const p =
+        brandRes?.data?.branding?.supportWhatsapp ||
+        brandRes?.data?.supportWhatsapp ||
+        brandRes?.data?.branding?.supportPhone ||
+        bankRes?.data?.bank?.whatsappNotificationPhone ||
+        bankRes?.data?.data?.whatsappNotificationPhone;
+      if (p) {
+        setSupportPhone(p.replace(/[^0-9]/g, ''));
+      }
+      const em = brandRes?.data?.branding?.supportEmail || brandRes?.data?.supportEmail;
+      if (em) {
+        setSupportEmail(em.trim());
+      }
+    } catch {}
+  };
+
   const handleShareReferral = async () => {
     triggerHaptic('light');
     const msg = `Join MBK DATASUB for the cheapest automated mobile data bundles, airtime discount and 0% wallet funding! Use my referral code: ${user?.referralCode || 'MBK1000'}\nDownload app at https://mbkdatasub.com.ng`;
@@ -93,7 +128,7 @@ export const ProfileScreen = ({ navigation }: any) => {
 
   const handleWhatsAppSupport = () => {
     triggerHaptic('light');
-    Linking.openURL('https://wa.me/2347063462998?text=Hello%20MBK%20DATASUB%20Support,%20I%20need%20assistance.');
+    Linking.openURL(`https://wa.me/${supportPhone}?text=Hello%20MBK%20DATASUB%20Support,%20I%20need%20assistance.`);
   };
 
   const handleToggleBiometrics = async (value: boolean) => {

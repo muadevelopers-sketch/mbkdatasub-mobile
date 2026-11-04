@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   StatusBar,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   User,
@@ -22,8 +24,11 @@ import {
   ArrowRight,
   ArrowLeft,
   ShieldAlert,
+  KeyRound,
+  CheckCircle2,
 } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
+import { apiClient } from '../../api/client';
 import { triggerHaptic } from '../../utils/haptics';
 
 export const RegisterScreen = ({ navigation }: any) => {
@@ -36,6 +41,63 @@ export const RegisterScreen = ({ navigation }: any) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const [emailVerificationEnabled, setEmailVerificationEnabled] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  useFocusEffect(
+    useCallback(() => {
+      apiClient.get('/auth/registration-settings')
+        .then((res) => {
+          if (res.data?.success) {
+            setEmailVerificationEnabled(Boolean(res.data.emailVerificationEnabled));
+          }
+        })
+        .catch(() => {});
+    }, [])
+  );
+
+  const handleSendOtp = async () => {
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMessage('Please enter a valid email address first.');
+      triggerHaptic('error');
+      return;
+    }
+    setOtpLoading(true);
+    setErrorMessage('');
+    triggerHaptic('selection');
+    try {
+      const res = await apiClient.post('/auth/request-otp', {
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+      });
+      setOtpLoading(false);
+      if (res.data?.success) {
+        triggerHaptic('success');
+        setOtpSent(true);
+        setCountdown(60);
+        Alert.alert('Verification Code Sent', `A 6-digit verification code has been dispatched to ${email.trim().toLowerCase()}. Please check your inbox or spam folder.`);
+      } else {
+        triggerHaptic('error');
+        setErrorMessage(res.data?.message || 'Failed to dispatch verification code.');
+      }
+    } catch (err: any) {
+      setOtpLoading(false);
+      triggerHaptic('error');
+      setErrorMessage(err.response?.data?.message || err.message || 'Could not send verification code.');
+    }
+  };
 
   const handleRegister = async () => {
     if (!fullName.trim()) {
@@ -52,6 +114,13 @@ export const RegisterScreen = ({ navigation }: any) => {
       setErrorMessage('Please enter a valid email address.');
       triggerHaptic('error');
       return;
+    }
+    if (emailVerificationEnabled) {
+      if (!otp.trim() || otp.trim().length < 4) {
+        setErrorMessage('Please enter the 6-digit verification code sent to your email.');
+        triggerHaptic('error');
+        return;
+      }
     }
     // Enforce compulsory strong password criteria
     if (!password || password.length < 8) {
@@ -90,6 +159,7 @@ export const RegisterScreen = ({ navigation }: any) => {
       email: email.trim().toLowerCase(),
       password,
       referralCode: referralCode.trim() || undefined,
+      otp: emailVerificationEnabled ? otp.trim() : undefined,
     });
 
     setLoading(false);
@@ -183,6 +253,45 @@ export const RegisterScreen = ({ navigation }: any) => {
             />
           </View>
         </View>
+
+        {emailVerificationEnabled && (
+          <View style={styles.formGroup}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={styles.inputLabel}>Email Verification Code (OTP)</Text>
+              <TouchableOpacity
+                onPress={handleSendOtp}
+                disabled={otpLoading || countdown > 0}
+                style={{ paddingVertical: 2, paddingHorizontal: 6 }}
+              >
+                {otpLoading ? (
+                  <ActivityIndicator size="small" color="#38BDF8" />
+                ) : (
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: countdown > 0 ? '#64748B' : '#38BDF8' }}>
+                    {countdown > 0 ? `Resend in ${countdown}s` : (otpSent ? 'Resend Code' : 'Send Code')}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputWrapper}>
+              <KeyRound size={18} color="#64748B" style={styles.inputIcon} />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter 6-digit verification code"
+                placeholderTextColor="#64748B"
+                value={otp}
+                onChangeText={(t) => setOtp(t.replace(/[^0-9]/g, '').slice(0, 6))}
+                keyboardType="numeric"
+                maxLength={6}
+              />
+              {otp.length >= 6 && (
+                <CheckCircle2 size={18} color="#10B981" style={{ marginRight: 12 }} />
+              )}
+            </View>
+            <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+              Admin security verification is required for all new account registrations.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.formGroup}>
           <Text style={styles.inputLabel}>Create Strong Password</Text>
