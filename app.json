@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "MBKDATASUB",
+    "slug": "mbkdatasub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ng.com.mbkdatasub",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "MBKDATASUB uses Apple Face ID for instant 1-tap login and transaction PIN authorization."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F172A"
+      },
+      "package": "ng.com.mbkdatasub",
+      "versionCode": 7,
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "VIBRATE"
+      ]
+    },
+    "extra": {
+      "apiUrl": "https://mbkdatasub.com.ng/api/v1",
+      "eas": {
+        "projectId": "0376728d-bd7a-45da-a114-9f53d87348b7"
+      }
+    }
+  }
+}
