@@ -3,6 +3,7 @@
     "name": "MBKDATASUB",
     "slug": "mbkdatasub",
     "version": "1.0.0",
+    "sdkVersion": "57.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -25,7 +26,7 @@
         "backgroundColor": "#0F172A"
       },
       "package": "ng.com.mbkdatasub",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
