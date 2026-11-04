@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import {
   Zap,
   ArrowUpRight,
   ArrowDownLeft,
+  ArrowLeft,
   X,
   Copy,
   Check,
@@ -36,7 +37,7 @@ import { formatNaira, formatDate } from '../../utils/formatters';
 import { triggerHaptic } from '../../utils/haptics';
 import { apiClient } from '../../api/client';
 
-export const HistoryScreen = () => {
+export const HistoryScreen = ({ navigation }: any) => {
   const { transactions, refreshData } = useAuth();
   const { colors, isDark } = useTheme();
   const [supportPhone, setSupportPhone] = useState('2349047050681');
@@ -69,16 +70,19 @@ export const HistoryScreen = () => {
     { id: 'fund', label: 'Funding' },
   ];
 
-  const filteredTransactions = transactions.filter((tx) => {
+  const txList = Array.isArray(transactions) ? transactions : [];
+
+  const filteredTransactions = txList.filter((tx) => {
+    if (!tx) return false;
     const code = (tx.serviceCode || tx.title || '').toLowerCase();
-    const query = searchQuery.toLowerCase();
+    const query = (searchQuery || '').toLowerCase();
 
     // Match search
     const matchesSearch =
       !query ||
-      tx.title.toLowerCase().includes(query) ||
-      tx.reference.toLowerCase().includes(query) ||
-      (tx.recipient && tx.recipient.includes(query));
+      (tx.title || '').toLowerCase().includes(query) ||
+      (tx.reference || '').toLowerCase().includes(query) ||
+      (tx.recipient && String(tx.recipient).includes(query));
 
     if (!matchesSearch) return false;
 
@@ -135,7 +139,20 @@ export const HistoryScreen = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Transaction History</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          {navigation?.canGoBack?.() && (
+            <TouchableOpacity
+              style={{ marginRight: 12, padding: 4 }}
+              onPress={() => {
+                triggerHaptic('light');
+                navigation.goBack();
+              }}
+            >
+              <ArrowLeft size={22} color={colors.text} />
+            </TouchableOpacity>
+          )}
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Transaction History</Text>
+        </View>
         <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
           Complete real-time record of all your wallet transactions.
         </Text>
