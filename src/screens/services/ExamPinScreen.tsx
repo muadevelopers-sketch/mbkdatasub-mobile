@@ -8,8 +8,9 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';;
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import {
   ArrowLeft,
@@ -32,6 +33,13 @@ import { triggerHaptic } from '../../utils/haptics';
 import { BiometricPinModal } from '../../components/BiometricPinModal';
 import { InsufficientBalanceModal } from '../../components/InsufficientBalanceModal';
 import { TransactionSuccessModal } from '../../components/TransactionSuccessModal';
+
+const EXAM_LOGOS: Record<string, any> = {
+  waec: require('../../../assets/exams/waec.png'),
+  neco: require('../../../assets/exams/neco.png'),
+  nabteb: require('../../../assets/exams/nabteb.png'),
+  jamb: require('../../../assets/exams/jamb.png'),
+};
 
 interface ExamItem {
   id: string;
@@ -255,8 +263,12 @@ export const ExamPinScreen = ({ navigation }: any) => {
                 activeOpacity={0.75}
               >
                 <View style={styles.examCardHeader}>
-                  <View style={[styles.examIconBox, { backgroundColor: isSelected ? colors.surface : colors.primaryBg }]}>
-                    <GraduationCap size={22} color={colors.primary} />
+                  <View style={[styles.examIconBox, { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: isSelected ? colors.primary : '#E2E8F0' }]}>
+                    {EXAM_LOGOS[item.id] ? (
+                      <Image source={EXAM_LOGOS[item.id]} style={styles.examLogo} resizeMode="contain" />
+                    ) : (
+                      <GraduationCap size={22} color={colors.primary} />
+                    )}
                   </View>
                   {isSelected ? (
                     <View style={[styles.checkCircle, { backgroundColor: colors.primary }]}>
@@ -277,10 +289,17 @@ export const ExamPinScreen = ({ navigation }: any) => {
         {selectedExam ? (
           <View style={styles.revealedSection}>
             <View style={[styles.selectedHeaderCard, { backgroundColor: colors.card, borderColor: colors.primary }]}>
-              <View style={styles.selectedLeft}>
-                <Text style={[styles.revealedBadge, { color: colors.primary }]}>{selectedExam.badge}</Text>
-                <Text style={[styles.revealedName, { color: colors.text }]}>{selectedExam.name}</Text>
-                <Text style={[styles.revealedDesc, { color: colors.textSecondary }]}>{selectedExam.description}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                {EXAM_LOGOS[selectedExam.id] && (
+                  <View style={[styles.selectedLogoBox, { backgroundColor: '#FFFFFF' }]}>
+                    <Image source={EXAM_LOGOS[selectedExam.id]} style={styles.selectedExamLogo} resizeMode="contain" />
+                  </View>
+                )}
+                <View style={styles.selectedLeft}>
+                  <Text style={[styles.revealedBadge, { color: colors.primary }]}>{selectedExam.badge}</Text>
+                  <Text style={[styles.revealedName, { color: colors.text }]}>{selectedExam.name}</Text>
+                  <Text style={[styles.revealedDesc, { color: colors.textSecondary }]}>{selectedExam.description}</Text>
+                </View>
               </View>
               <View style={styles.selectedRight}>
                 <Text style={[styles.unitPriceLabel, { color: colors.textSecondary }]}>Unit Price</Text>
@@ -496,11 +515,32 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   examIconBox: {
-    width: 42,
-    height: 42,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    padding: 3,
+  },
+  examLogo: {
+    width: 34,
+    height: 34,
+  },
+  selectedLogoBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    padding: 3,
+  },
+  selectedExamLogo: {
+    width: 38,
+    height: 38,
   },
   checkCircle: {
     width: 22,

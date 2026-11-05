@@ -80,6 +80,15 @@ const NETWORK_LOGOS: Record<string, any> = {
   '9mobile': require('../../../assets/networks/9mobile.png'),
 };
 
+const getNetworkLogo = (net?: string) => {
+  const n = (net || '').toUpperCase();
+  if (n.includes('MTN')) return NETWORK_LOGOS.MTN;
+  if (n.includes('AIRTEL')) return NETWORK_LOGOS.Airtel;
+  if (n.includes('GLO')) return NETWORK_LOGOS.Glo;
+  if (n.includes('9MOB') || n.includes('ETISALAT')) return NETWORK_LOGOS['9mobile'];
+  return NETWORK_LOGOS[net || 'MTN'] || NETWORK_LOGOS.MTN;
+};
+
 export const DataScreen = ({ navigation }: any) => {
   const { wallet, refreshData } = useAuth();
   const { colors, isDark } = useTheme();
@@ -363,6 +372,7 @@ export const DataScreen = ({ navigation }: any) => {
             ) : (
               networkPlans.map((plan) => {
                 const isSelected = selectedPlan?.id === plan.id;
+                const netLogo = getNetworkLogo(plan.network || selectedNetwork);
                 return (
                   <TouchableOpacity
                     key={plan.id}
@@ -377,11 +387,16 @@ export const DataScreen = ({ navigation }: any) => {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.planInfo}>
-                      <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
-                      <Text style={[styles.planValidity, { color: colors.textSecondary }]}>
-                        {plan.validity || '30 Days Validity'} • {plan.type || 'SME'}
-                      </Text>
+                    <View style={styles.planCardLeft}>
+                      <View style={[styles.planLogoBox, { backgroundColor: '#FFFFFF', borderColor: isSelected ? colors.primary : '#E2E8F0' }]}>
+                        <Image source={netLogo} style={styles.planNetworkLogo} resizeMode="contain" />
+                      </View>
+                      <View style={styles.planInfo}>
+                        <Text style={[styles.planName, { color: colors.text }]}>{plan.name}</Text>
+                        <Text style={[styles.planValidity, { color: colors.textSecondary }]}>
+                          {plan.validity || '30 Days Validity'} • {plan.type || 'SME'}
+                        </Text>
+                      </View>
                     </View>
                     <View style={styles.planPriceCol}>
                       <Text style={[styles.planPrice, { color: colors.text }, isSelected && { color: colors.primary }]}>
@@ -645,6 +660,28 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
     borderColor: '#334155',
+  },
+  planCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  planLogoBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    padding: 3,
+  },
+  planNetworkLogo: {
+    width: 28,
+    height: 28,
   },
   planCardSelected: {
     borderColor: '#38BDF8',
